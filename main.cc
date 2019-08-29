@@ -39,26 +39,23 @@ in vec3 pos;
 in vec3 normal;
 in vec2 uv;
 
-out vec3 color;
+out vec3 p_color;
 out vec3 c_normal;
 
 void main() {
-  color = vec3(1) + normal * 0.00001 * uv.x * 0.000001 * uv.y;
-  c_normal = normal / 2 + 0.5;
+  p_color = (pos + 1) / 2;
+  c_normal = (normal + 1) / 2;
 }
 )";
 
-static const char* quad_vs_src = R"(
-#version 450
+static const char* quad_vs_src = R"( #version 450
 in vec3 vPos;
 
 out vec2 uv;
-out vec3 pos;
 
 void main() {
  gl_Position = vec4(vPos, 1);
  uv = vPos.xy/2 + 0.5;
- pos = vPos;
 }
 )";
 
@@ -66,14 +63,32 @@ static const char* quad_fs_src = R"(
 #version 450
 
 in vec2 uv;
-in vec3 pos;
-
 out vec3 color;
-
 uniform sampler2D tex;
 
 void main() {
   color = texture(tex, uv).xyz;
+}
+)";
+
+static const char* defer_fs_src = R"(
+#version 450
+
+in vec2 uv;
+layout(location = 0) uniform sampler2D t_pos;
+layout(location = 1) uniform sampler2D t_normal;
+
+out vec3 color;
+
+void main() {
+  vec3 pos = texture(t_pos, uv).xyz * 2 - 1;
+  vec3 normal = texture(t_normal, uv).xyz * 2 - 1;
+  vec3 lDir = normalize(vec3(0, 1, 1));
+  vec3 lPos = vec3(0, -1, 1);
+  float lBright = 4;
+  vec3 lvec = pos - lPos;
+  float falloff = 1 / dot(lvec, lvec);
+  color = vec3(1) * lBright * dot(lDir, normal) * falloff;
 }
 )";
 
@@ -95,11 +110,19 @@ int main(int argc, char** argv) {
   GLFWwindow* window = glfwCreateWindow(640, 480, "Yeah", NULL, NULL);
   if (!window) return 3;
   glfwMakeContextCurrent(window);
+  glEnable(GL_DEPTH_TEST);
 
   // Create render target
   GLuint fbo;
   glGenFramebuffers(1, &fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+  // Add depth buffer
+  GLuint depthBuf;
+  glGenRenderbuffers(1, &depthBuf);
+  glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 640, 480);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuf);
 
   GLuint posTex;
   glGenTextures(1, &posTex);
@@ -168,6 +191,9 @@ int main(int argc, char** argv) {
 
   // Initialize the final quad
   GLuint quad_program = GenerateProgram(CompileShader(GL_VERTEX_SHADER, quad_vs_src), CompileShader(GL_FRAGMENT_SHADER, quad_fs_src));
+  GLuint defer_program = GenerateProgram(CompileShader(GL_VERTEX_SHADER, quad_vs_src), CompileShader(GL_FRAGMENT_SHADER, defer_fs_src));
+  GLuint t_pos = glGetUniformLocation(defer_program, "t_pos");
+  GLuint t_normal = glGetUniformLocation(defer_program, "t_normal");
 
   float quad_vertices[18] = {
     -1.0f, -1.0f, 0.0f,
@@ -206,8 +232,8 @@ int main(int argc, char** argv) {
     glfwGetFramebufferSize(window, &w, &h);
     glUseProgram(program);
     mat4x4 u_mvp, u_camera;
-    Matrix4 mvp = Matrix4::FromAxisRotations(0, glfwGetTime(), 0);
-    Matrix4 camera = Matrix4::FromPerspective(1.25f, w/h, 0.1f, 1000.0f) * Matrix4::FromTranslation(0, 0, -6);
+    Matrix4 mvp = Matrix4::FromTranslation(0, 0, -7) * Matrix4::FromAxisRotations(0, glfwGetTime(), 0);
+    Matrix4 camera = Matrix4::FromPerspective(1.25f, w/h, 0.1f, 1000.0f);
     mvp.unpack(u_mvp);
     camera.unpack(u_camera);
 
@@ -224,14 +250,34 @@ int main(int argc, char** argv) {
     glfwGetFramebufferSize(window, &w, &h);
 
 
+    // Draw pos
+    glActiveTexture(GL_TEXTURE0);
     glUseProgram(quad_program);
     glBindVertexArray(quad_vao);
     glBindTexture(GL_TEXTURE_2D, posTex);
-    glViewport(0, 0, w/2, h/2);
+    glViewport(0, h/2, w/2, h/2);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
+    // Draw normals
     glBindTexture(GL_TEXTURE_2D, normalTex);
     glViewport(w/2, h/2, w/2, h/2);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // <--- Draw combined ---->
+    glViewport(0, 0, w/2, h/2);
+
+    glUseProgram(defer_program);
+
+    // map uniform textures to slots
+    glUniform1i(t_pos, 0);
+    glUniform1i(t_normal, 1);
+
+    // populate the slots
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, posTex);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, normalTex);
+
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
 
