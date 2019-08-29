@@ -39,12 +39,14 @@ in vec3 pos;
 in vec3 normal;
 in vec2 uv;
 
-out vec3 p_color;
+out vec3 c_pos;
 out vec3 c_normal;
+out vec3 c_material;
 
 void main() {
-  p_color = (pos + 1) / 2;
+  c_pos = (pos + 1) / 2;
   c_normal = (normal + 1) / 2;
+  c_material = vec3(1);
 }
 )";
 
@@ -77,18 +79,28 @@ static const char* defer_fs_src = R"(
 in vec2 uv;
 layout(location = 0) uniform sampler2D t_pos;
 layout(location = 1) uniform sampler2D t_normal;
+layout(location = 2) uniform sampler2D t_material;
 
 out vec3 color;
+
+layout (std140) uniform shader_data
+{
+  vec4 light_pos[32];
+  vec4 light_col[32];
+};
 
 void main() {
   vec3 pos = texture(t_pos, uv).xyz * 2 - 1;
   vec3 normal = texture(t_normal, uv).xyz * 2 - 1;
-  vec3 lDir = normalize(vec3(0, 1, 1));
-  vec3 lPos = vec3(0, -1, 1);
-  float lBright = 4;
-  vec3 lvec = pos - lPos;
-  float falloff = 1 / dot(lvec, lvec);
-  color = vec3(1) * lBright * dot(lDir, normal) * falloff;
+  vec3 material = texture(t_material, uv).xyz;
+  color = vec3(0);
+  for(int i=0; i<2; i++) {
+    vec3 lVec = pos - light_pos[i].xyz;
+    float dist = length(lVec);
+    vec3 lDir = lVec / dist;
+    float falloff = 1 / dist;
+    color += material * light_col[i].xyz * max(dot(lDir, normal), 0) * falloff;
+  }
 }
 )";
 
@@ -97,12 +109,19 @@ void glfw_error_callback(int error, const char* description)
   fprintf(stderr, "Error: %s\n", description);
 }
 
+struct shader_data_t
+{
+  Vector4 light_pos[32];
+  Vector4 light_col[32];
+} shader_data;
+
 int main(int argc, char** argv) {
   if (!glfwInit()) return 2;
   glfwSetErrorCallback(glfw_error_callback);
   glEnable(GL_DEBUG_OUTPUT);
 
-	glDebugMessageCallback(GLDEBUGPROC(gl_debug_output), nullptr); glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+	glDebugMessageCallback(GLDEBUGPROC(gl_debug_output), nullptr); 
+  glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
 
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
@@ -140,8 +159,17 @@ int main(int argc, char** argv) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, normalTex, 0);
 
-  GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-  glDrawBuffers(2, DrawBuffers);
+  GLuint materialTex;
+  glGenTextures(1, &materialTex);
+  glBindTexture(GL_TEXTURE_2D, materialTex);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, materialTex, 0);
+
+
+  GLenum DrawBuffers[3] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
+  glDrawBuffers(3, DrawBuffers);
 
   // Always check that our framebuffer is ok
   if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -152,7 +180,7 @@ int main(int argc, char** argv) {
   GLuint uMvp = glGetUniformLocation(program, "uMvp");
   GLuint uCamera = glGetUniformLocation(program, "uCamera");
 
-  cObj* model = new cObj("stack.obj");
+  cObj* model = new cObj("player.obj");
   std::vector<float> vertices, normals, uvs;
   model->renderBuffers(vertices, normals, uvs);
   delete model;
@@ -194,6 +222,18 @@ int main(int argc, char** argv) {
   GLuint defer_program = GenerateProgram(CompileShader(GL_VERTEX_SHADER, quad_vs_src), CompileShader(GL_FRAGMENT_SHADER, defer_fs_src));
   GLuint t_pos = glGetUniformLocation(defer_program, "t_pos");
   GLuint t_normal = glGetUniformLocation(defer_program, "t_normal");
+  GLuint t_material = glGetUniformLocation(defer_program, "t_material");
+  GLuint u_shader_data = glGetUniformBlockIndex(defer_program, "shader_data");
+
+  shader_data.light_pos[0] = Vector4(0, -1, -2, 0);
+  shader_data.light_col[0] = Vector4(0, 1, 0, 1);
+  shader_data.light_pos[1] = Vector4(0, 1, -2, 0);
+  shader_data.light_col[1] = Vector4(1, 0, 0, 1);
+  GLuint ubo;
+  glGenBuffers(1, &ubo);
+  glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(shader_data), &shader_data, GL_DYNAMIC_DRAW);
+  glBindBufferBase(GL_UNIFORM_BUFFER, u_shader_data, ubo);
 
   float quad_vertices[18] = {
     -1.0f, -1.0f, 0.0f,
@@ -226,13 +266,17 @@ int main(int argc, char** argv) {
 
   while(!glfwWindowShouldClose(window))
   {
+    // Update the light store
+    glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(shader_data), &shader_data);
+
     int w, h;
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
     glfwGetFramebufferSize(window, &w, &h);
     glUseProgram(program);
     mat4x4 u_mvp, u_camera;
-    Matrix4 mvp = Matrix4::FromTranslation(0, 0, -7) * Matrix4::FromAxisRotations(0, glfwGetTime(), 0);
+    Matrix4 mvp = Matrix4::FromTranslation(0, -10, -25) * Matrix4::FromAxisRotations(0, glfwGetTime(), 0);
     Matrix4 camera = Matrix4::FromPerspective(1.25f, w/h, 0.1f, 1000.0f);
     mvp.unpack(u_mvp);
     camera.unpack(u_camera);
@@ -246,9 +290,8 @@ int main(int argc, char** argv) {
     glBindVertexArray(0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glfwGetFramebufferSize(window, &w, &h);
-
 
     // Draw pos
     glActiveTexture(GL_TEXTURE0);
@@ -263,20 +306,28 @@ int main(int argc, char** argv) {
     glViewport(w/2, h/2, w/2, h/2);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
-    // <--- Draw combined ---->
+    // Draw material
+    glBindTexture(GL_TEXTURE_2D, materialTex);
     glViewport(0, 0, w/2, h/2);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // <--- Draw combined ---->
+    glViewport(w/2, 0, w/2, h/2);
 
     glUseProgram(defer_program);
 
     // map uniform textures to slots
     glUniform1i(t_pos, 0);
     glUniform1i(t_normal, 1);
+    glUniform1i(t_material, 2);
 
     // populate the slots
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, posTex);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, normalTex);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, materialTex);
 
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
