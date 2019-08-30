@@ -91,15 +91,20 @@ layout (std140) uniform shader_data
 
 void main() {
   vec3 pos = texture(t_pos, uv).xyz * 2 - 1;
-  vec3 normal = texture(t_normal, uv).xyz * 2 - 1;
+  vec3 normal = normalize(texture(t_normal, uv).xyz * 2 - 1);
   vec3 material = texture(t_material, uv).xyz;
+  vec3 C = vec3(0);
   color = vec3(0);
-  for(int i=0; i<2; i++) {
+  for(int i=0; i<32; i++) {
     vec3 lVec = pos - light_pos[i].xyz;
     float dist = length(lVec);
     vec3 lDir = lVec / dist;
     float falloff = 1 / dist;
+    vec3 E = normalize(C - light_pos[i].xyz);
+    vec3 R = reflect(-lDir, normal);
+    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 50) * falloff;
     color += material * light_col[i].xyz * max(dot(lDir, normal), 0) * falloff;
+    color += specular;
   }
 }
 )";
@@ -140,13 +145,13 @@ int main(int argc, char** argv) {
   GLuint depthBuf;
   glGenRenderbuffers(1, &depthBuf);
   glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 640, 480);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1920, 1080);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuf);
 
   GLuint posTex;
   glGenTextures(1, &posTex);
   glBindTexture(GL_TEXTURE_2D, posTex);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1920, 1080, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, posTex, 0);
@@ -154,7 +159,7 @@ int main(int argc, char** argv) {
   GLuint normalTex;
   glGenTextures(1, &normalTex);
   glBindTexture(GL_TEXTURE_2D, normalTex);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1920, 1080, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, normalTex, 0);
@@ -162,7 +167,7 @@ int main(int argc, char** argv) {
   GLuint materialTex;
   glGenTextures(1, &materialTex);
   glBindTexture(GL_TEXTURE_2D, materialTex);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1920, 1080, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, materialTex, 0);
@@ -225,10 +230,6 @@ int main(int argc, char** argv) {
   GLuint t_material = glGetUniformLocation(defer_program, "t_material");
   GLuint u_shader_data = glGetUniformBlockIndex(defer_program, "shader_data");
 
-  shader_data.light_pos[0] = Vector4(0, -1, -2, 0);
-  shader_data.light_col[0] = Vector4(0, 1, 0, 1);
-  shader_data.light_pos[1] = Vector4(0, 1, -2, 0);
-  shader_data.light_col[1] = Vector4(1, 0, 0, 1);
   GLuint ubo;
   glGenBuffers(1, &ubo);
   glBindBuffer(GL_UNIFORM_BUFFER, ubo);
@@ -266,25 +267,36 @@ int main(int argc, char** argv) {
 
   while(!glfwWindowShouldClose(window))
   {
+    for(int i=0; i<8; i++) {
+      float p = i / 8.0f;
+      float f = p * 6.282;
+      float x = 4 * sin(f + glfwGetTime());
+      float z = 4 * cos(f + glfwGetTime());
+      shader_data.light_pos[i] = Vector4(x, 0, z, 0);
+      shader_data.light_col[i] = Vector4(p, 1-p, -1 + p * 2, 0);
+    }
     // Update the light store
     glBindBuffer(GL_UNIFORM_BUFFER, ubo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(shader_data), &shader_data);
 
     int w, h;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glfwGetFramebufferSize(window, &w, &h);
+    printf("w: %i / h: %i\n", w, h);
+
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
-    glfwGetFramebufferSize(window, &w, &h);
     glUseProgram(program);
     mat4x4 u_mvp, u_camera;
-    Matrix4 mvp = Matrix4::FromTranslation(0, -10, -25) * Matrix4::FromAxisRotations(0, glfwGetTime(), 0);
-    Matrix4 camera = Matrix4::FromPerspective(1.25f, w/h, 0.1f, 1000.0f);
+    Matrix4 mvp = Matrix4::FromTranslation(0, -10, -25) * Matrix4::FromAxisRotations(0, 0, 0);
+    Matrix4 camera = Matrix4::FromPerspective(1.05f, w/h, 0.1f, 1000.0f);
     mvp.unpack(u_mvp);
     camera.unpack(u_camera);
 
     glUniformMatrix4fv(uMvp, 1, GL_FALSE, (const GLfloat*)u_mvp);
     glUniformMatrix4fv(uCamera, 1, GL_FALSE, (const GLfloat*)u_camera);
 
-    glViewport(0, 0, w, h); 
+    glViewport(0, 0, 1920, 1080); 
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, vertices.size());
     glBindVertexArray(0);
@@ -297,6 +309,8 @@ int main(int argc, char** argv) {
     glActiveTexture(GL_TEXTURE0);
     glUseProgram(quad_program);
     glBindVertexArray(quad_vao);
+
+    /*
     glBindTexture(GL_TEXTURE_2D, posTex);
     glViewport(0, h/2, w/2, h/2);
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -310,9 +324,10 @@ int main(int argc, char** argv) {
     glBindTexture(GL_TEXTURE_2D, materialTex);
     glViewport(0, 0, w/2, h/2);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    */
 
     // <--- Draw combined ---->
-    glViewport(w/2, 0, w/2, h/2);
+    glViewport(0, 0, w, h);
 
     glUseProgram(defer_program);
 
