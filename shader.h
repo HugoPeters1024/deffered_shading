@@ -69,6 +69,20 @@ void main() {
 }
 )";
 
+static const char* post_fs_src = R"(
+#version 450
+
+in vec2 uv;
+out vec3 color;
+
+uniform sampler2D tex;
+
+void main() {
+ color = texture(tex, uv).xyz;
+}
+
+)";
+
 static const char* defer_fs_src = R"(
 #version 450
 
@@ -173,6 +187,15 @@ struct sh_combinator_t {
   }
 } sh_combinator;
 
+struct sh_post_t {
+  GLuint program_id;
+  void use(const Texture &tex) const {
+    glUseProgram(program_id);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+  }
+} sh_post;
+
 void init() {
   printf("Shaders are being initalized\n");
 
@@ -180,6 +203,8 @@ void init() {
   sh_quad.program_id = loadShaderLiteral(quad_vs_src, quad_fs_src);
   // MAIN SHADER
   sh_main.program_id = loadShaderLiteral(vs_src, fs_src);
+  // POST SHADER
+  sh_post.program_id = loadShaderLiteral(quad_vs_src, post_fs_src);
 
 
   // COMBINATOR

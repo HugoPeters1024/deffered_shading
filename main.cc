@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
     glViewport(0, 0, w, h);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    Shaders::sh_quad.use(FBO::post_buffer.tex);
+    Shaders::sh_post.use(FBO::post_buffer.tex);
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
 
