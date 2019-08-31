@@ -16,14 +16,15 @@
 #define D_CAMERA_UNIFORM_INDEX 0
 #define D_MVP_UNIFORM_INDEX    1
 
-#define D_POS_GTEXTURE_INDEX      0
-#define D_NORMAL_GTEXTURE_INDEX   1
-#define D_MATERIAL_GTEXTURE_INDEX 2
+#define D_POS_GTEXTURE_INDEX      15 
+#define D_NORMAL_GTEXTURE_INDEX   16
+#define D_MATERIAL_GTEXTURE_INDEX 17
 
 #include "gl_debug.h"
 #include "shader_utils.h"
 #include "vec.h"
 #include "obj_loader.h"
+#include "texture.h"
 #include "mesh.h"
 #include "shader.h"
 
