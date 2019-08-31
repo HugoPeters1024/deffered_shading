@@ -157,7 +157,7 @@ struct sh_combinator_t {
     glUseProgram(program_id);
     // Update te light suite
     glBindBuffer(GL_UNIFORM_BUFFER, lights_buffer);
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(lights), &lights, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(lights), &lights);
 
     // Populate g buffer slots
     glActiveTexture(GL_TEXTURE0);
@@ -194,6 +194,7 @@ void init() {
   // lights
   glGenBuffers(1, &lights_buffer);
   glBindBuffer(GL_UNIFORM_BUFFER, lights_buffer);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(lights_t), NULL, GL_STREAM_DRAW);
 
   GLuint u_shader_data = glGetUniformBlockIndex(sh_combinator.program_id, "shader_data"); 
   glBindBufferBase(GL_UNIFORM_BUFFER, u_shader_data, lights_buffer);

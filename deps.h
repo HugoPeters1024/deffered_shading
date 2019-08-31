@@ -22,6 +22,10 @@
 #define D_NORMAL_GTEXTURE_INDEX   16
 #define D_MATERIAL_GTEXTURE_INDEX 17
 
+// FRAMEBUFFERS
+#define D_FRAMEBUFFER_WIDTH 640
+#define D_FRAMEBUFFER_HEIGHT 480
+
 #include "gl_debug.h"
 #include "shader_utils.h"
 #include "vec.h"
