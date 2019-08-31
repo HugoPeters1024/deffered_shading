@@ -126,17 +126,18 @@ void main() {
   vec3 pos = WorldPosFromDepth(depth);
 
   // ambient
-  color = material * 0.2;
+  color = material * 0.1;
   for(int i=0; i<32; i++) {
     vec3 lVec = light_pos[i].xyz - pos;
     float dist2 = dot(lVec, lVec);
     vec3 lDir = lVec / sqrt(dist2);
+    if (dot(lDir, vec3(0, 1, 0)) < 0.8) continue;
     float falloff = 1 / dist2;
     color += material * light_col[i].xyz * max(dot(lDir, normal), 0) * falloff;
 
     vec3 E = normalize(uCamPos - light_pos[i].xyz);
     vec3 R = reflect(-lDir, normal);
-    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 20) * falloff;
+    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 70) * falloff;
     color += specular;
   }
 }

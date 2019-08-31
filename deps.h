@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <math.h>
+#include <algorithm>
 
 // SHADER LOCATIONS
 #define D_POS_BUFFER_INDEX    0
