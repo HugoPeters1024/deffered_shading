@@ -108,11 +108,13 @@ void main() {
 }
 )";
 
-GLuint loadShaderLiteral(const char* vs, const char* fs) {
+static inline GLuint loadShaderLiteral(const char* vs, const char* fs) {
     return GenerateProgram(
         CompileShader(GL_VERTEX_SHADER, vs),
         CompileShader(GL_FRAGMENT_SHADER, fs));
 }
+
+static GLuint lights_buffer;
 
 struct lights_t {
   Vector4 pos[32];
@@ -147,9 +149,8 @@ struct sh_main_t {
 struct sh_combinator_t {
   // Combination shader that combines to the g buffers to a quad
   GLuint program_id;
-  GLuint ubo;
   void use(const lights_t &lights, Texture g_pos, Texture g_norm, Texture g_mat) const {
-    glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, lights_buffer);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(lights), &lights, GL_DYNAMIC_DRAW);
     glUseProgram(program_id);
     glActiveTexture(GL_TEXTURE0);
@@ -180,23 +181,12 @@ void init() {
   glUniform1i(D_MATERIAL_GTEXTURE_INDEX, 2);
 
   // lights
+  glGenBuffers(1, &lights_buffer);
+  glBindBuffer(GL_UNIFORM_BUFFER, lights_buffer);
+
   GLuint u_shader_data = glGetUniformBlockIndex(sh_combinator.program_id, "shader_data"); 
-  glGenBuffers(1, &sh_combinator.ubo);
-  glBindBuffer(GL_UNIFORM_BUFFER, sh_combinator.ubo);
-  glBindBufferBase(GL_UNIFORM_BUFFER, u_shader_data, sh_combinator.ubo);
+  glBindBufferBase(GL_UNIFORM_BUFFER, u_shader_data, lights_buffer);
   // END COMBINATOR
-}
-
-void setMVP(const Matrix4 &m) {
-  mat4x4 mm;
-  m.unpack(mm);
-  glUniformMatrix4fv(D_MVP_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)mm);
-}
-
-void setCamera(const Matrix4 &m) {
-  mat4x4 mm;
-  m.unpack(mm);
-  glUniformMatrix4fv(D_CAMERA_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)mm);
 }
 
 }

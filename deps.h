@@ -24,6 +24,7 @@
 #include "shader_utils.h"
 #include "vec.h"
 #include "obj_loader.h"
+#include "framebuffer.h"
 #include "texture.h"
 #include "mesh.h"
 #include "shader.h"
