@@ -74,6 +74,7 @@ static const char* defer_fs_src = R"(
 
 in vec2 uv;
 
+layout(location = 2) uniform vec3 uCamPos;
 layout(location = 15) uniform sampler2D t_pos;
 layout(location = 16) uniform sampler2D t_normal;
 layout(location = 17) uniform sampler2D t_material;
@@ -89,22 +90,21 @@ layout (std140) uniform shader_data
 void main() {
   vec3 pos = texture(t_pos, uv).xyz * 2 - 1;
   vec3 normal = normalize(texture(t_normal, uv).xyz * 2 - 1);
-  vec3 material = texture(t_material, uv).xyz;
-  vec3 C = vec3(0);
-  color = vec3(0);
+  vec3 material = normalize(texture(t_material, uv).xyz);
+  // ambient
+  color = material * 0.2;
   for(int i=0; i<32; i++) {
-    vec3 lVec = pos - light_pos[i].xyz;
-    float dist = length(lVec);
-    vec3 lDir = lVec / dist;
-    float falloff = 1 / dist;
-    vec3 E = normalize(C - light_pos[i].xyz);
-    vec3 R = reflect(-lDir, normal);
-    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 50) * falloff;
+    vec3 lVec = light_pos[i].xyz - pos;
+    float dist2 = dot(lVec, lVec);
+    vec3 lDir = lVec / sqrt(dist2);
+    float falloff = 1 / dist2;
     color += material * light_col[i].xyz * max(dot(lDir, normal), 0) * falloff;
+
+    vec3 E = normalize(uCamPos - light_pos[i].xyz);
+    vec3 R = reflect(-lDir, normal);
+    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 100) * falloff;
     color += specular;
   }
-  if (gl_FragCoord.x < 0.5)
-    color = vec3(0.2, 0.2, 1);
 }
 )";
 
@@ -134,31 +134,42 @@ struct sh_quad_t {
 struct sh_main_t {
   // Main shader that renders to the g buffers
   GLuint program_id;
-  void use(const Matrix4 &camera, const Matrix4 &mvp) const {
-    glUseProgram(program_id);
+  void setCamera(const Matrix4 &camera) const {
     mat4x4 m_camera;
     camera.unpack(m_camera);
     glUniformMatrix4fv(D_CAMERA_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)m_camera);
-
+  }
+  void setMvp(const Matrix4 &mvp) const {
     mat4x4 m_mvp;
     mvp.unpack(m_mvp);
     glUniformMatrix4fv(D_MVP_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)m_mvp);
+  }
+  void use(const Matrix4 &camera) const {
+    glUseProgram(program_id);
+    setCamera(camera);
   }
 } sh_main;
 
 struct sh_combinator_t {
   // Combination shader that combines to the g buffers to a quad
   GLuint program_id;
-  void use(const lights_t &lights, Texture g_pos, Texture g_norm, Texture g_mat) const {
+  void use(const lights_t &lights, const Vector3 &cam_pos, Texture g_pos, Texture g_norm, Texture g_mat) const {
+    glUseProgram(program_id);
+    // Update te light suite
     glBindBuffer(GL_UNIFORM_BUFFER, lights_buffer);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(lights), &lights, GL_DYNAMIC_DRAW);
-    glUseProgram(program_id);
+
+    // Populate g buffer slots
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, g_pos);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, g_norm);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, g_mat);
+
+    // Populate camera pos for specular lighting
+    glUniform3f(D_CAMERAPOS_UNIFORM_INDEX, cam_pos.x, cam_pos.y, cam_pos.z);
+
   }
 } sh_combinator;
 

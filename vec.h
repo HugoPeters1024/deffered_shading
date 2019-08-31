@@ -74,6 +74,7 @@ public:
   Vector3 operator - (const Vector3 &o) const { return Vector3(x-o.x, y-o.y, z-o.z); }
   Vector3& operator -= (const Vector3 &o) { x -= o.x; y -= o.y; z -= o.z; return *this; }
   Vector3 operator - () const { return Vector3(-x, -y, -z); }
+  void unpack(vec3 &v) const { v[0] = x, v[1] = y, v[2] = z; }
   void print() const { printf("(%f, %f, %f)\n", x, y, z); }
 
   static Vector3 reflect(const Vector3 &a, const Vector3 &n) {
