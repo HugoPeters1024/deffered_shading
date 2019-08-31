@@ -39,7 +39,7 @@ out vec3 c_normal;
 out vec3 c_material;
 
 void main() {
-  c_pos = (pos + 1) / 2;
+  c_pos = pos;
   c_normal = (normal + 1) / 2;
   c_material = vec3(1);
 }
@@ -102,7 +102,7 @@ layout (std140) uniform shader_data
 };
 
 void main() {
-  vec3 pos = texture(t_pos, uv).xyz * 2 - 1;
+  vec3 pos = texture(t_pos, uv).xyz;
   vec3 normal = normalize(texture(t_normal, uv).xyz * 2 - 1);
   vec3 material = normalize(texture(t_material, uv).xyz);
   // ambient
@@ -116,7 +116,7 @@ void main() {
 
     vec3 E = normalize(uCamPos - light_pos[i].xyz);
     vec3 R = reflect(-lDir, normal);
-    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 100) * falloff;
+    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 40) * falloff;
     color += specular;
   }
 }

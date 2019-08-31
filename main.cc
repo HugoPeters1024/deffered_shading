@@ -41,11 +41,18 @@ int main(int argc, char** argv) {
   while(!glfwWindowShouldClose(window))
   {
     float f = glfwGetTime();
-    float x = 16 * sin(f);
-    float z = 16 * cos(f);
+    float x = 12 * sin(f);
+    float z = 12 * cos(f);
     float y = 10;
+    lights.pos[0] = Vector4(-x, y, -z, 0);
+    lights.col[0] = Vector4(100, 40, 60, 0) * 0.2;
+
     lights.pos[1] = Vector4(x, y, z, 0);
-    lights.col[1] = Vector4(50, 80, 60, 0) * 2;
+    lights.col[1] = Vector4(50, 80, 60, 0) *0.2;
+
+    lights.pos[2] = Vector4(0, x-10, z, 0);
+    lights.col[2] = Vector4(50, 30, 80, 0) * 2;
+
 
     int w, h;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -55,6 +62,7 @@ int main(int argc, char** argv) {
 
     FBO::g_buffer.bind();
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+
     Matrix4 mvp = Matrix4::FromAxisRotations(0, 0, 0);
     Shaders::sh_main.use(camera.getMatrix());
     Shaders::sh_main.setMvp(mvp);
@@ -65,6 +73,14 @@ int main(int argc, char** argv) {
 
     glBindVertexArray(cube->vao);
     Matrix4 cube_mvp = Matrix4::FromTranslation(x, y, z);
+    Shaders::sh_main.setMvp(cube_mvp);
+    glDrawArrays(GL_TRIANGLES, 0, cube->vertex_count);
+
+    cube_mvp = Matrix4::FromTranslation(-x, y, -z);
+    Shaders::sh_main.setMvp(cube_mvp);
+    glDrawArrays(GL_TRIANGLES, 0, cube->vertex_count);
+
+    cube_mvp = Matrix4::FromTranslation(0, x+10, z);
     Shaders::sh_main.setMvp(cube_mvp);
     glDrawArrays(GL_TRIANGLES, 0, cube->vertex_count);
 
