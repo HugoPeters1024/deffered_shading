@@ -37,6 +37,11 @@ int main(int argc, char** argv) {
   auto quad = Meshes::loadMesh("quad.obj");
   auto mesh = Meshes::loadMesh("player.obj");
   auto cube = Meshes::loadMesh("cube.obj");
+  auto floor = Meshes::loadMesh("floor.obj");
+
+  glClampColorARB(GL_CLAMP_VERTEX_COLOR_ARB, GL_FALSE);
+  glClampColorARB(GL_CLAMP_READ_COLOR_ARB, GL_FALSE);
+  glClampColorARB(GL_CLAMP_FRAGMENT_COLOR_ARB, GL_FALSE);
 
   while(!glfwWindowShouldClose(window))
   {
@@ -45,13 +50,13 @@ int main(int argc, char** argv) {
     float z = 12 * cos(f);
     float y = 10;
     lights.pos[0] = Vector4(-x, y, -z, 0);
-    lights.col[0] = Vector4(100, 40, 60, 0) * 0.2;
+    lights.col[0] = Vector4(100, 40, 60, 0) * 2;
 
     lights.pos[1] = Vector4(x, y, z, 0);
-    lights.col[1] = Vector4(50, 80, 60, 0) *0.2;
+    lights.col[1] = Vector4(50, 80, 60, 0) * 2;
 
-    lights.pos[2] = Vector4(0, x-10, z, 0);
-    lights.col[2] = Vector4(50, 30, 80, 0) * 2;
+    lights.pos[2] = Vector4(0, x+10, z, 0);
+    lights.col[2] = Vector4(50, 30, 80, 0);
 
 
     int w, h;
@@ -63,7 +68,7 @@ int main(int argc, char** argv) {
     FBO::g_buffer.bind();
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 
-    Matrix4 mvp = Matrix4::FromAxisRotations(0, 0, 0);
+    Matrix4 mvp = Matrix4::FromAxisRotations(0, glfwGetTime(), 0);
     Shaders::sh_main.use(camera.getMatrix());
     Shaders::sh_main.setMvp(mvp);
 
@@ -84,6 +89,11 @@ int main(int argc, char** argv) {
     Shaders::sh_main.setMvp(cube_mvp);
     glDrawArrays(GL_TRIANGLES, 0, cube->vertex_count);
 
+    Matrix4 floor_mvp = Matrix4::FromScale(15, 15, 15);
+    Shaders::sh_main.setMvp(floor_mvp);
+    glBindVertexArray(floor->vao);
+    glDrawArrays(GL_TRIANGLES, 0, floor->vertex_count);
+
 
     // <--- Draw combined to post buffer ---->
     FBO::post_buffer.bind();
@@ -92,15 +102,17 @@ int main(int argc, char** argv) {
 
     Shaders::sh_combinator.use(
         lights,
+        camera.getMatrix(),
         camera.getPosition(),
         FBO::g_buffer.posTex,
         FBO::g_buffer.normalTex,
-        FBO::g_buffer.materialTex);
+        FBO::g_buffer.materialTex,
+        FBO::g_buffer.depthTex);
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
     glBindVertexArray(0);
 
-    // <--- Draw result with pos shader --->
+    // <--- Draw result with post shader --->
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glfwGetFramebufferSize(window, &w, &h);
     glViewport(0, 0, w, h);

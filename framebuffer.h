@@ -1,6 +1,6 @@
 namespace FBO {
   struct g_buffer_t {
-    GLuint id, posTex, normalTex, materialTex;
+    GLuint id, posTex, normalTex, materialTex, depthTex;
     void bind() const { glBindFramebuffer(GL_FRAMEBUFFER, id); }
     void init() {
       printf("Initializing GBuffer\n");
@@ -13,6 +13,14 @@ namespace FBO {
       glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
       glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT);
       glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuf);
+
+      glGenTextures(1, &depthTex);
+      glBindTexture(GL_TEXTURE_2D, depthTex);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT, 0,GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
+
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,GL_TEXTURE_2D, depthTex,0);
 
       // Generate and bind 3 textures
       glGenTextures(1, &posTex);
@@ -41,6 +49,9 @@ namespace FBO {
       glDrawBuffers(3, DrawBuffers);
 
       // Always check that our framebuffer is ok
+      auto fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+      if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
+          std::cout << "Framebuffer not complete: " << fboStatus <<  " /  " << GL_FRAMEBUFFER_UNSUPPORTED << std::endl;
       if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         exit(7);
     }

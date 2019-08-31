@@ -11,7 +11,7 @@ layout(location=0) in vec3 vPos;
 layout(location=1) in vec3 vNormal;
 layout(location=2) in vec2 vUv;
 
-out vec3 pos;
+out vec3 position;
 out vec3 normal;
 out vec2 uv;
 
@@ -21,7 +21,7 @@ layout(location = 1) uniform mat4 uMvp;
 void main() {
   vec4 worldPos = uMvp * vec4(vPos, 1); 
   gl_Position = uCamera * worldPos;
-  pos = worldPos.xyz;
+  position = worldPos.xyz;
   normal = normalize(uMvp * vec4(vNormal, 0)).xyz;
   uv = vUv;
 }
@@ -30,7 +30,7 @@ void main() {
 static const char* fs_src = R"(
 #version 450
 
-in vec3 pos;
+in vec3 position;
 in vec3 normal;
 in vec2 uv;
 
@@ -39,13 +39,14 @@ out vec3 c_normal;
 out vec3 c_material;
 
 void main() {
-  c_pos = pos;
-  c_normal = (normal + 1) / 2;
+  c_pos = position;
+  c_normal = normal;
   c_material = vec3(1);
 }
 )";
 
-static const char* quad_vs_src = R"( #version 450
+static const char* quad_vs_src = R"( 
+#version 450
 in vec3 vPos;
 
 out vec2 uv;
@@ -88,10 +89,12 @@ static const char* defer_fs_src = R"(
 
 in vec2 uv;
 
-layout(location = 2) uniform vec3 uCamPos;
+layout(location = 0)  uniform mat4      uCamera;
+layout(location = 2)  uniform vec3      uCamPos;
 layout(location = 15) uniform sampler2D t_pos;
 layout(location = 16) uniform sampler2D t_normal;
 layout(location = 17) uniform sampler2D t_material;
+layout(location = 18) uniform sampler2D t_depth;
 
 out vec3 color;
 
@@ -101,10 +104,27 @@ layout (std140) uniform shader_data
   vec4 light_col[32];
 };
 
+// this is supposed to get the world position from the depth buffer
+vec3 WorldPosFromDepth(float depth) {
+    float z = depth * 2.0 - 1.0;
+
+    vec4 clipSpacePosition = vec4(uv * 2.0 - 1.0, z, 1.0);
+    vec4 viewSpacePosition = inverse(uCamera) * clipSpacePosition;
+
+    // Perspective division
+    viewSpacePosition /= viewSpacePosition.w;
+
+    vec4 worldSpacePosition = viewSpacePosition;
+
+    return worldSpacePosition.xyz;
+}
+
 void main() {
-  vec3 pos = texture(t_pos, uv).xyz;
-  vec3 normal = normalize(texture(t_normal, uv).xyz * 2 - 1);
-  vec3 material = normalize(texture(t_material, uv).xyz);
+  vec3 normal = texture(t_normal, uv).xyz;
+  vec3 material = texture(t_material, uv).xyz;
+  float depth = (texture(t_depth, uv)).x;
+  vec3 pos = WorldPosFromDepth(depth);
+
   // ambient
   color = material * 0.2;
   for(int i=0; i<32; i++) {
@@ -116,7 +136,7 @@ void main() {
 
     vec3 E = normalize(uCamPos - light_pos[i].xyz);
     vec3 R = reflect(-lDir, normal);
-    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 40) * falloff;
+    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 20) * falloff;
     color += specular;
   }
 }
@@ -167,7 +187,7 @@ struct sh_main_t {
 struct sh_combinator_t {
   // Combination shader that combines to the g buffers to a quad
   GLuint program_id;
-  void use(const lights_t &lights, const Vector3 &cam_pos, Texture g_pos, Texture g_norm, Texture g_mat) const {
+  void use(const lights_t &lights, const Matrix4 &camera, const Vector3 &cam_pos, Texture g_pos, Texture g_norm, Texture g_mat, Texture g_depth) const {
     glUseProgram(program_id);
     // Update te light suite
     glBindBuffer(GL_UNIFORM_BUFFER, lights_buffer);
@@ -180,7 +200,14 @@ struct sh_combinator_t {
     glBindTexture(GL_TEXTURE_2D, g_norm);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, g_mat);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, g_depth);
 
+    // Populate camera transformation for restoring the fragment position from depth buffer
+    mat4x4 m_camera;
+    camera.unpack(m_camera);
+    glUniformMatrix4fv(D_CAMERA_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)m_camera);
+    
     // Populate camera pos for specular lighting
     glUniform3f(D_CAMERAPOS_UNIFORM_INDEX, cam_pos.x, cam_pos.y, cam_pos.z);
 
@@ -215,6 +242,7 @@ void init() {
   glUniform1i(D_POS_GTEXTURE_INDEX,      0);
   glUniform1i(D_NORMAL_GTEXTURE_INDEX,   1);
   glUniform1i(D_MATERIAL_GTEXTURE_INDEX, 2);
+  glUniform1i(D_DEPTH_GTEXTURE_INDEX,    3);
 
   // lights
   glGenBuffers(1, &lights_buffer);

@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #define GL_GLEXT_PROTOTYPES 1
-#define GL3_PROTOTYPES 1
+#define GL3_PROTOTYPES      1
 #include <GLFW/glfw3.h>
 
 #include <vector>
@@ -14,13 +14,14 @@
 #define D_NORMAL_BUFFER_INDEX 1
 #define D_UV_BUFFER_INDEX     2
 
-#define D_CAMERA_UNIFORM_INDEX 0
-#define D_MVP_UNIFORM_INDEX    1
+#define D_CAMERA_UNIFORM_INDEX    0
+#define D_MVP_UNIFORM_INDEX       1
 #define D_CAMERAPOS_UNIFORM_INDEX 2
 
-#define D_POS_GTEXTURE_INDEX      15 
+#define D_POS_GTEXTURE_INDEX      15
 #define D_NORMAL_GTEXTURE_INDEX   16
 #define D_MATERIAL_GTEXTURE_INDEX 17
+#define D_DEPTH_GTEXTURE_INDEX    18
 
 // FRAMEBUFFERS
 #define D_FRAMEBUFFER_WIDTH 640
