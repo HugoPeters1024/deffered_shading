@@ -1,59 +1,35 @@
-#ifndef SHADERS_H
-#define SHADERS_H
-#include <array>
-#include <string>
-#include <sstream>
-#include <fstream>
+#include "deps.h"
 
-inline static GLuint CompileShader(GLint type, const char* source)
-{
-  // Preprocess macro's
-  GLuint shader = glCreateShader(type);
-  glShaderSource(shader, 1, &source, NULL);
-  glCompileShader(shader);
 
-  // Check the compilation of the shader 
-  GLint success = 0;
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+namespace Shaders {
 
-  if (success == GL_FALSE)
-  {
-    GLint maxLength = 0;
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+typedef GLuint Shader;
 
-    GLchar* errorLog = (GLchar*)malloc(maxLength);
-    glGetShaderInfoLog(shader, maxLength, &maxLength, errorLog);
-
-    printf("Error in shader: %s", errorLog);
-
-    free(errorLog);
-    return -1;
-  }
-
-  return shader;
-};
-
-inline static GLuint GenerateProgram(GLuint vs, GLuint fs)
-{
-  GLuint program = glCreateProgram();
-  glAttachShader(program, vs);
-  glAttachShader(program, fs);
-  glLinkProgram(program);
-  GLint isLinked = 0;
-  glGetProgramiv(program, GL_LINK_STATUS, &isLinked);
-  if (!isLinked)
-  {
-    GLint maxLength = 0;  
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
-    GLchar* errorLog = (GLchar*)malloc(maxLength);
-    glGetProgramInfoLog(program, maxLength, &maxLength, errorLog);
-
-    printf("Shader linker error: %s", errorLog);
-
-    glDeleteProgram(program);
-    exit(5);
-  }
-  return program;
+GLuint loadShaderLiteral(const char* vs, const char* fs) {
+    return GenerateProgram(
+        CompileShader(GL_VERTEX_SHADER, vs),
+        CompileShader(GL_FRAGMENT_SHADER, fs));
 }
 
-#endif
+void initGBufferBinding(const Shader shader) {
+    // map uniform textures to slots
+    glUniform1i(D_POS_GTEXTURE_INDEX, D_POS_GTEXTURE_INDEX);
+    glUniform1i(D_NORMAL_GTEXTURE_INDEX, D_NORMAL_GTEXTURE_INDEX);
+    glUniform1i(D_MATERIAL_GTEXTURE_INDEX, D_MATERIAL_GTEXTURE_INDEX);
+}
+
+void setMVP(const Matrix4 &m) {
+  mat4x4 mm;
+  m.unpack(mm);
+  glUniformMatrix4fv(D_MVP_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)mm);
+}
+
+void setCamera(const Matrix4 &m) {
+  mat4x4 mm;
+  m.unpack(mm);
+  glUniformMatrix4fv(D_CAMERA_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)mm);
+}
+
+}
+
+

@@ -95,9 +95,12 @@ public:
   Vector4(float a) : x(a), y(a), z(a), w(a) {}
   Vector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
   Vector4(Vector3 a, float w) : Vector4(a.x, a.y, a.z, w) {}
+  Vector4 operator * (float s) const { return Vector4(x*s, y*s, z*s, w*s); }
 
   Vector3 xyz() const { return Vector3(x, y, z); }
 };
+
+Vector4 operator * (float s, const Vector4 &o) { return o * s; }
 
 class Matrix4 {
 private:

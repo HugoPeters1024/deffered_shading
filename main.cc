@@ -1,27 +1,17 @@
-#include <stdio.h>
-#define GL_GLEXT_PROTOTYPES 1
-#define GL3_PROTOTYPES 1
-#include <GLFW/glfw3.h>
-
-#include <vector>
-
-#include "gl_debug.h"
-#include "shader.h"
-#include "vec.h"
-#include "obj_loader.h"
+#include "deps.h"
 
 static const char* vs_src = R"(
 #version 450
-in vec3 vPos;
-in vec3 vNormal;
-in vec2 vUv;
+layout(location=0) in vec3 vPos;
+layout(location=1) in vec3 vNormal;
+layout(location=2) in vec2 vUv;
 
 out vec3 pos;
 out vec3 normal;
 out vec2 uv;
 
-uniform mat4 uMvp;
-uniform mat4 uCamera;
+layout(location = 0) uniform mat4 uCamera;
+layout(location = 1) uniform mat4 uMvp;
 
 void main() {
   vec4 worldPos = uMvp * vec4(vPos, 1); 
@@ -65,6 +55,7 @@ static const char* quad_fs_src = R"(
 #version 450
 
 in vec2 uv;
+
 out vec3 color;
 uniform sampler2D tex;
 
@@ -77,6 +68,7 @@ static const char* defer_fs_src = R"(
 #version 450
 
 in vec2 uv;
+
 layout(location = 0) uniform sampler2D t_pos;
 layout(location = 1) uniform sampler2D t_normal;
 layout(location = 2) uniform sampler2D t_material;
@@ -134,6 +126,7 @@ int main(int argc, char** argv) {
   GLFWwindow* window = glfwCreateWindow(640, 480, "Yeah", NULL, NULL);
   if (!window) return 3;
   glfwMakeContextCurrent(window);
+  glfwSwapInterval(1);
   glEnable(GL_DEPTH_TEST);
 
   // Create render target
@@ -181,46 +174,7 @@ int main(int argc, char** argv) {
     exit(7);
 
   // Initialize the main scene
-  GLuint program = GenerateProgram(CompileShader(GL_VERTEX_SHADER, vs_src), CompileShader(GL_FRAGMENT_SHADER, fs_src));
-  GLuint uMvp = glGetUniformLocation(program, "uMvp");
-  GLuint uCamera = glGetUniformLocation(program, "uCamera");
-
-  cObj* model = new cObj("player.obj");
-  std::vector<float> vertices, normals, uvs;
-  model->renderBuffers(vertices, normals, uvs);
-  delete model;
-
-  GLuint vao;
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
-
-  GLuint vbo, nbo, uvbo;
-  glGenBuffers(1, &vbo);
-  glGenBuffers(1, &nbo);
-  glGenBuffers(1, &uvbo);
-
-  // Fill vertices
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-  GLuint vPos = glGetAttribLocation(program, "vPos");
-  glEnableVertexAttribArray(vPos);
-  glVertexAttribPointer(vPos, 3, GL_FLOAT, GL_FALSE, 0, (void*)(sizeof(float) * 0));
-
-  // Fill normals
-  glBindBuffer(GL_ARRAY_BUFFER, nbo);
-  glBufferData(GL_ARRAY_BUFFER, normals.size()*sizeof(float), normals.data(), GL_STATIC_DRAW);
-  GLuint vNormal = glGetAttribLocation(program, "vNormal");
-  glEnableVertexAttribArray(vNormal);
-  glVertexAttribPointer(vNormal, 3, GL_FLOAT, GL_FALSE, 0, (void*)(sizeof(float) * 0));
-  
-  // Fill uvs
-  glBindBuffer(GL_ARRAY_BUFFER, uvbo);
-  glBufferData(GL_ARRAY_BUFFER, uvs.size()*sizeof(float), uvs.data(), GL_STATIC_DRAW);
-  GLuint vUv = glGetAttribLocation(program, "vUv");
-  glEnableVertexAttribArray(vUv);
-  glVertexAttribPointer(vUv, 2, GL_FLOAT, GL_FALSE, 0, (void*)(sizeof(float) * 0));
-
-  glBindVertexArray(0);
+  Shaders::Shader program = Shaders::loadShaderLiteral(vs_src, fs_src);
 
   // Initialize the final quad
   GLuint quad_program = GenerateProgram(CompileShader(GL_VERTEX_SHADER, quad_vs_src), CompileShader(GL_FRAGMENT_SHADER, quad_fs_src));
@@ -228,8 +182,7 @@ int main(int argc, char** argv) {
   GLuint t_pos = glGetUniformLocation(defer_program, "t_pos");
   GLuint t_normal = glGetUniformLocation(defer_program, "t_normal");
   GLuint t_material = glGetUniformLocation(defer_program, "t_material");
-  GLuint u_shader_data = glGetUniformBlockIndex(defer_program, "shader_data");
-
+  GLuint u_shader_data = glGetUniformBlockIndex(defer_program, "shader_data"); 
   GLuint ubo;
   glGenBuffers(1, &ubo);
   glBindBuffer(GL_UNIFORM_BUFFER, ubo);
@@ -265,16 +218,19 @@ int main(int argc, char** argv) {
       (void*)0);
   glBindVertexArray(0);
 
+  Meshes::Mesh* mesh = Meshes::loadMesh("player.obj");
+
   while(!glfwWindowShouldClose(window))
   {
     for(int i=0; i<8; i++) {
       float p = i / 8.0f;
       float f = p * 6.282;
-      float x = 4 * sin(f + glfwGetTime());
-      float z = 4 * cos(f + glfwGetTime());
-      shader_data.light_pos[i] = Vector4(x, 0, z, 0);
-      shader_data.light_col[i] = Vector4(p, 1-p, -1 + p * 2, 0);
+      float x = 16 * sin(f + glfwGetTime());
+      float z = 16 * cos(f + glfwGetTime());
+      shader_data.light_pos[i] = Vector4(z, z + glfwGetTime(), x, 0);
+      shader_data.light_col[i] = 3.0f * Vector4(p, 1-p, -1 + p * 2, 0);
     }
+
     // Update the light store
     glBindBuffer(GL_UNIFORM_BUFFER, ubo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(shader_data), &shader_data);
@@ -282,23 +238,19 @@ int main(int argc, char** argv) {
     int w, h;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glfwGetFramebufferSize(window, &w, &h);
-    printf("w: %i / h: %i\n", w, h);
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
-    glUseProgram(program);
-    mat4x4 u_mvp, u_camera;
     Matrix4 mvp = Matrix4::FromTranslation(0, -10, -25) * Matrix4::FromAxisRotations(0, 0, 0);
     Matrix4 camera = Matrix4::FromPerspective(1.05f, w/h, 0.1f, 1000.0f);
-    mvp.unpack(u_mvp);
-    camera.unpack(u_camera);
 
-    glUniformMatrix4fv(uMvp, 1, GL_FALSE, (const GLfloat*)u_mvp);
-    glUniformMatrix4fv(uCamera, 1, GL_FALSE, (const GLfloat*)u_camera);
+    glUseProgram(program);
+    Shaders::setMVP(mvp);
+    Shaders::setCamera(camera);
 
     glViewport(0, 0, 1920, 1080); 
-    glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+    glBindVertexArray(mesh->vao);
+    glDrawArrays(GL_TRIANGLES, 0, mesh->vertex_count);
     glBindVertexArray(0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -330,11 +282,8 @@ int main(int argc, char** argv) {
     glViewport(0, 0, w, h);
 
     glUseProgram(defer_program);
+    Shaders::initGBufferBinding(program);
 
-    // map uniform textures to slots
-    glUniform1i(t_pos, 0);
-    glUniform1i(t_normal, 1);
-    glUniform1i(t_material, 2);
 
     // populate the slots
     glActiveTexture(GL_TEXTURE0);
