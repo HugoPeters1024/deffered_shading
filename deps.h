@@ -24,13 +24,14 @@
 #define D_DEPTH_GTEXTURE_INDEX    17
 
 // FRAMEBUFFERS
-#define D_FRAMEBUFFER_WIDTH 720
+#define D_FRAMEBUFFER_WIDTH 640
 #define D_FRAMEBUFFER_HEIGHT 480
 
-#include "gl_debug.h"
-#include "shader_utils.h"
-#include "vec.h"
-#include "obj_loader.h"
+#include "utils/gl_debug.h"
+#include "utils/vec.h"
+#include "utils/obj_loader.h"
+#include "utils/stb_image.h"
+#include "utils/shader_utils.h"
 
 #include "keyboard.h"
 #include "camera.h"

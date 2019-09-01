@@ -54,8 +54,8 @@ int main(int argc, char** argv) {
       float r = 50;
 
       lights.pos[i] = Vector4(r * x, 15, r * z, 0);
-      lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 480;
-      lights.dir[i] = Vector4((Vector3(0, -10 + 40 * sin(2*v + glfwGetTime()), 0)-lights.pos[i].xyz()).normalized(), 0.959 - 0.05 * sin(v+glfwGetTime()));
+      lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 580;
+      lights.dir[i] = Vector4((Vector3(0, -20 + 40 * sin(3.4*v + glfwGetTime()), 0)-lights.pos[i].xyz()).normalized(), 0.959 - 0.02 * sin(v+glfwGetTime()));
     }
 
     lights.pos[16] = Vector4(0, 70, 0, 0);

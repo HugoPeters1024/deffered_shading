@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <vector>
 #include <sstream>
+#include <fstream>
 
 #include "vec.h"
 

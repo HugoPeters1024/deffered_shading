@@ -134,7 +134,7 @@ void main() {
     float corr = 1;
     float cone_angle = max(dot(lDir, -lNormal), 0);
     if ((cone_angle) < cone) 
-      corr = max(1 - 10 * pow(cone+1, 5) * abs(cone_angle-cone), 0);
+      corr = max(1 - 10 * pow(cone+1, 3) * abs(cone_angle-cone), 0);
     float falloff = 1 / dist2;
     float diffuse = max(dot(lDir, normal), 0);
 
