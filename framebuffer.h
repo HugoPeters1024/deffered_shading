@@ -8,11 +8,13 @@ namespace FBO {
       glBindFramebuffer(GL_FRAMEBUFFER, id);
 
       // Add depth buffering
+      /*
       GLuint depthBuf;
       glGenRenderbuffers(1, &depthBuf);
       glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
       glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT);
       glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuf);
+      */
 
       glGenTextures(1, &depthTex);
       glBindTexture(GL_TEXTURE_2D, depthTex);

@@ -135,16 +135,17 @@ void main() {
     vec3 lNormal = light_dir[i].xyz;
     float cone = light_dir[i].w;
     float corr = 1;
-    float cone_angle = dot(lDir, -lNormal);
+    float cone_angle = max(dot(lDir, -lNormal), 0);
     if ((cone_angle) < cone) 
-      corr = 1 - 6 * abs(cone_angle-cone);
+      corr = max(1 - 10 * pow(cone+1, 5) * abs(cone_angle-cone), 0);
     float falloff = 1 / dist2;
     float diffuse = max(dot(lDir, normal), 0);
 
-    vec3 E = normalize(uCamPos - light_pos[i].xyz);
+    //vec3 E = normalize(uCamPos - light_pos[i].xyz);
+    vec3 E = normalize(uCamPos - pos);
     vec3 R = reflect(-lDir, normal);
-    float specular = pow(max(dot(E, R), 0), 70);
-    color += (diffuse + specular) * material * light_col[i].xyz * falloff * corr;
+    float specular = pow(max(dot(E, R), 0), 120);
+    color += (specular + diffuse) * material * light_col[i].xyz * falloff * corr;
   }
 }
 )";

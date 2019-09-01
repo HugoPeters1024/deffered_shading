@@ -51,19 +51,16 @@ int main(int argc, char** argv) {
       float v = (float)i / 16.0f * 6.28;
       float x = sin(v);
       float z = cos(v);
-      float r = 30;
+      float r = 50;
 
       lights.pos[i] = Vector4(r * x, 15, r * z, 0);
-      if (((int_Time / 4) % 16) == i)
-        lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 580;
-      else
-        lights.col[i] = Vector4(0);
-      lights.dir[i] = Vector4((Vector3(0, 15, 0)-lights.pos[i].xyz()).normalized(), 0.98);
+      lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 480;
+      lights.dir[i] = Vector4((Vector3(0, -10 + 40 * sin(2*v + glfwGetTime()), 0)-lights.pos[i].xyz()).normalized(), 0.959 - 0.05 * sin(v+glfwGetTime()));
     }
 
-    lights.pos[16] = Vector4(0, 30, 0, 0);
-    lights.col[16] = Vector4(1) * 300;
-    lights.dir[16] = Vector4(0, -1, 0, 0.7 + 0.28 * sin(time*2));
+    lights.pos[16] = Vector4(0, 70, 0, 0);
+    lights.col[16] = Vector4(1) * 2000;
+    lights.dir[16] = Vector4(0, 0, 0, 0);
 
     for(int i=17; i<32; i++) {
       lights.pos[i] = Vector4(1000000000);

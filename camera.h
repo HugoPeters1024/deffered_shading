@@ -30,7 +30,7 @@ Camera::Camera(float fov)
 
 void Camera::update(float ratio, Keyboard* keyboard)
 {
-  if (pos.y + velocity.y > 10) {
+  if (pos.y + velocity.y > 17) {
     pos += velocity;
     velocity.y -= gravity;
   } else {
