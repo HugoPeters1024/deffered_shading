@@ -37,9 +37,13 @@ in vec2 uv;
 out vec3 c_normal;
 out vec3 c_material;
 
+layout(location = 3) uniform float texture_scale;
+
+layout(location = 5) uniform sampler2D material;
+
 void main() {
   c_normal = normal;
-  c_material = vec3(1);
+  c_material = texture(material, uv * texture_scale).xyz; 
 }
 )";
 
@@ -184,6 +188,9 @@ struct sh_main_t {
     mvp.unpack(m_mvp);
     glUniformMatrix4fv(D_MVP_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)m_mvp);
   }
+  void setTextureScale(float s) const {
+    glUniform1f(D_TEXTURE_SCALE_UNIFORM_INDEX, s);
+  }
   void use(const Matrix4 &camera) const {
     glUseProgram(program_id);
     setCamera(camera);
@@ -234,6 +241,9 @@ void init() {
   sh_quad.program_id = loadShaderLiteral(quad_vs_src, quad_fs_src);
   // MAIN SHADER
   sh_main.program_id = loadShaderLiteral(vs_src, fs_src);
+  glUseProgram(sh_main.program_id);
+  glUniform1i(D_TEXTURE_MATERIAL_INDEX, 0);
+  sh_main.setTextureScale(1);
   // POST SHADER
   sh_post.program_id = loadShaderLiteral(quad_vs_src, post_fs_src);
 

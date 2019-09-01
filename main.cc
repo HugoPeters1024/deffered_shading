@@ -39,6 +39,9 @@ int main(int argc, char** argv) {
   auto cube = Meshes::loadMesh("cube.obj");
   auto floor = Meshes::loadMesh("floor.obj");
 
+  auto tx_white = Textures::createTextureColor(1, 1, 1);
+  auto tx_brick = Textures::loadTexture("textures/wall.jpg");
+
   int int_Time = 0;
   float time = 0;
 
@@ -59,7 +62,7 @@ int main(int argc, char** argv) {
     }
 
     lights.pos[16] = Vector4(0, 70, 0, 0);
-    lights.col[16] = Vector4(1) * 2000;
+    lights.col[16] = Vector4(1) * 1000;
     lights.dir[16] = Vector4(0, 0, 0, 0);
 
     for(int i=17; i<32; i++) {
@@ -79,6 +82,10 @@ int main(int argc, char** argv) {
 
     Matrix4 mvp = Matrix4::FromAxisRotations(0, 0, 0);
     Shaders::sh_main.use(camera.getMatrix());
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tx_brick);
+    Shaders::sh_main.setTextureScale(5);
 
     glBindVertexArray(mesh->vao);
     Shaders::sh_main.setMvp(mvp);

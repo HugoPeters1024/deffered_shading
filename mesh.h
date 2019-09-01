@@ -38,6 +38,8 @@ Mesh* loadMesh(const char* filename) {
   glBindBuffer(GL_ARRAY_BUFFER, uvbo);
   glBufferData(GL_ARRAY_BUFFER, uvs.size()*sizeof(float), uvs.data(), GL_STATIC_DRAW);
   glEnableVertexAttribArray(D_UV_BUFFER_INDEX);
+  glVertexAttribPointer(D_UV_BUFFER_INDEX, 2, GL_FLOAT, GL_FALSE, 0, (void*)(sizeof(float) * 0)); 
+  // Fill uvs
   glBindVertexArray(0);
   return mesh;
 }
