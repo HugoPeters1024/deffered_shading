@@ -34,12 +34,10 @@ in vec3 position;
 in vec3 normal;
 in vec2 uv;
 
-out vec3 c_pos;
 out vec3 c_normal;
 out vec3 c_material;
 
 void main() {
-  c_pos = position;
   c_normal = normal;
   c_material = vec3(1);
 }
@@ -91,10 +89,9 @@ in vec2 uv;
 
 layout(location = 0)  uniform mat4      uCamera;
 layout(location = 2)  uniform vec3      uCamPos;
-layout(location = 15) uniform sampler2D t_pos;
-layout(location = 16) uniform sampler2D t_normal;
-layout(location = 17) uniform sampler2D t_material;
-layout(location = 18) uniform sampler2D t_depth;
+layout(location = 15) uniform sampler2D t_normal;
+layout(location = 16) uniform sampler2D t_material;
+layout(location = 17) uniform sampler2D t_depth;
 
 out vec3 color;
 
@@ -196,7 +193,7 @@ struct sh_main_t {
 struct sh_combinator_t {
   // Combination shader that combines to the g buffers to a quad
   GLuint program_id;
-  void use(const lights_t &lights, const Matrix4 &camera, const Vector3 &cam_pos, Texture g_pos, Texture g_norm, Texture g_mat, Texture g_depth) const {
+  void use(const lights_t &lights, const Matrix4 &camera, const Vector3 &cam_pos, Texture g_norm, Texture g_mat, Texture g_depth) const {
     glUseProgram(program_id);
     // Update te light suite
     glBindBuffer(GL_UNIFORM_BUFFER, lights_buffer);
@@ -204,12 +201,10 @@ struct sh_combinator_t {
 
     // Populate g buffer slots
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, g_pos);
-    glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, g_norm);
-    glActiveTexture(GL_TEXTURE2);
+    glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, g_mat);
-    glActiveTexture(GL_TEXTURE3);
+    glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, g_depth);
 
     // Populate camera transformation for restoring the fragment position from depth buffer
@@ -248,10 +243,9 @@ void init() {
   glUseProgram(sh_combinator.program_id);
 
   // g buffer bindings
-  glUniform1i(D_POS_GTEXTURE_INDEX,      0);
-  glUniform1i(D_NORMAL_GTEXTURE_INDEX,   1);
-  glUniform1i(D_MATERIAL_GTEXTURE_INDEX, 2);
-  glUniform1i(D_DEPTH_GTEXTURE_INDEX,    3);
+  glUniform1i(D_NORMAL_GTEXTURE_INDEX,   0);
+  glUniform1i(D_MATERIAL_GTEXTURE_INDEX, 1);
+  glUniform1i(D_DEPTH_GTEXTURE_INDEX,    2);
 
   // lights
   glGenBuffers(1, &lights_buffer);

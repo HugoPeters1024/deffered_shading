@@ -107,7 +107,6 @@ int main(int argc, char** argv) {
         lights,
         camera.getMatrix(),
         camera.getPosition(),
-        FBO::g_buffer.posTex,
         FBO::g_buffer.normalTex,
         FBO::g_buffer.materialTex,
         FBO::g_buffer.depthTex);
