@@ -102,6 +102,7 @@ layout (std140) uniform shader_data
 {
   vec4 light_pos[32];
   vec4 light_col[32];
+  vec4 light_dir[32];
 };
 
 // this is supposed to get the world position from the depth buffer
@@ -131,14 +132,19 @@ void main() {
     vec3 lVec = light_pos[i].xyz - pos;
     float dist2 = dot(lVec, lVec);
     vec3 lDir = lVec / sqrt(dist2);
-    if (dot(lDir, vec3(0, 1, 0)) < 0.8) continue;
+    vec3 lNormal = light_dir[i].xyz;
+    float cone = light_dir[i].w;
+    float corr = 1;
+    float cone_angle = dot(lDir, -lNormal);
+    if ((cone_angle) < cone) 
+      corr = 1 - 6 * abs(cone_angle-cone);
     float falloff = 1 / dist2;
-    color += material * light_col[i].xyz * max(dot(lDir, normal), 0) * falloff;
+    float diffuse = max(dot(lDir, normal), 0);
 
     vec3 E = normalize(uCamPos - light_pos[i].xyz);
     vec3 R = reflect(-lDir, normal);
-    vec3 specular = material * light_col[i].xyz * pow(max(dot(E, R), 0), 70) * falloff;
-    color += specular;
+    float specular = pow(max(dot(E, R), 0), 70);
+    color += (diffuse + specular) * material * light_col[i].xyz * falloff * corr;
   }
 }
 )";
@@ -154,6 +160,7 @@ static GLuint lights_buffer;
 struct lights_t {
   Vector4 pos[32];
   Vector4 col[32];
+  Vector4 dir[32]; // xyz for direction, w for cone size (0 normal light)
 };
 
 struct sh_quad_t {

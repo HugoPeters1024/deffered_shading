@@ -97,8 +97,15 @@ public:
   Vector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
   Vector4(Vector3 a, float w) : Vector4(a.x, a.y, a.z, w) {}
   Vector4 operator * (float s) const { return Vector4(x*s, y*s, z*s, w*s); }
+  Vector4 operator - () const { return Vector4(-x, -y, -z, -w); }
+  float length() const { return sqrt(x * x + y * y + z * z + w * w); }
+  Vector4 normalized() const { 
+    float l = length();
+    return Vector4(x/l, y/l, z/l, w/l);
+  }
 
   Vector3 xyz() const { return Vector3(x, y, z); }
+  void print() const { printf("(%f, %f, %f, %f)\n", x, y, z, w); }
 };
 
 Vector4 operator * (float s, const Vector4 &o) { return o * s; }

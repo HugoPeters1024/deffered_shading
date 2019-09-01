@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
-  GLFWwindow* window = glfwCreateWindow(640, 480, "Yeah", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT, "Yeah", NULL, NULL);
   if (!window) return 3;
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);
@@ -39,33 +39,34 @@ int main(int argc, char** argv) {
   auto cube = Meshes::loadMesh("cube.obj");
   auto floor = Meshes::loadMesh("floor.obj");
 
+  int int_Time = 0;
+  float time = 0;
+
   while(!glfwWindowShouldClose(window))
   {
-    /*
-    float f = glfwGetTime();
-    float x = 12 * sin(f);
-    float z = 12 * cos(f);
-    float y = 10;
-    lights.pos[0] = Vector4(-x, y, -z, 0);
-    lights.col[0] = Vector4(100, 40, 60, 0);
+    int_Time += 1;
+    time += 0.01f;
 
-    lights.pos[1] = Vector4(x, y, z, 0);
-    lights.col[1] = Vector4(50, 80, 60, 0);
-
-    lights.pos[2] = Vector4(0, x+10, z, 0);
-    lights.col[2] = Vector4(50, 30, 80, 0);
-
-    lights.pos[3] = Vector4(0.5*x,20, 0.5*z, 0);
-    lights.col[3] = Vector4(0, 80, 80, 0);
-    */
-
-    for(int i=0; i<32; i++) {
-      float v = (float)i / 32.0f * 6.28;
-      float x = sin(2 * v);
+    for(int i=0; i<16; i+=1) {
+      float v = (float)i / 16.0f * 6.28;
+      float x = sin(v);
       float z = cos(v);
+      float r = 30;
 
-      lights.pos[i] = Vector4(60 * x, 25, 60 * z, 0);
-      lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 180 * (std::max(sin(2*v + glfwGetTime()*3), 0.0) + 0.5);
+      lights.pos[i] = Vector4(r * x, 15, r * z, 0);
+      if (((int_Time / 4) % 16) == i)
+        lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 580;
+      else
+        lights.col[i] = Vector4(0);
+      lights.dir[i] = Vector4((Vector3(0, 15, 0)-lights.pos[i].xyz()).normalized(), 0.98);
+    }
+
+    lights.pos[16] = Vector4(0, 30, 0, 0);
+    lights.col[16] = Vector4(1) * 300;
+    lights.dir[16] = Vector4(0, -1, 0, 0.7 + 0.28 * sin(time*2));
+
+    for(int i=17; i<32; i++) {
+      lights.pos[i] = Vector4(1000000000);
     }
 
 
@@ -89,7 +90,7 @@ int main(int argc, char** argv) {
 
     glBindVertexArray(cube->vao);
     for(int i=0; i<32; i++) {
-      Matrix4 cube_mvp = Matrix4::FromTranslation(lights.pos[i].xyz() + Vector3(0, 8, 0));
+      Matrix4 cube_mvp = Matrix4::FromTranslation(lights.pos[i].xyz() + 2 * lights.dir[i].xyz());
       Shaders::sh_main.setMvp(cube_mvp);
       glDrawArrays(GL_TRIANGLES, 0, cube->vertex_count);
     }

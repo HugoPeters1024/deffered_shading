@@ -25,7 +25,7 @@
 #define D_DEPTH_GTEXTURE_INDEX    18
 
 // FRAMEBUFFERS
-#define D_FRAMEBUFFER_WIDTH 640
+#define D_FRAMEBUFFER_WIDTH 720
 #define D_FRAMEBUFFER_HEIGHT 480
 
 #include "gl_debug.h"
