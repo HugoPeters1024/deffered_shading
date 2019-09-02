@@ -18,6 +18,8 @@ out vec3 normal;
 out vec2 uv;
 out vec3 tangent;
 out vec3 bitangent;
+out flat mat3 TBN;
+out flat int usenormalmap;
 
 layout(location = 0) uniform mat4 uCamera;
 layout(location = 1) uniform mat4 uMvp;
@@ -27,9 +29,16 @@ void main() {
   gl_Position = uCamera * worldPos;
   position = worldPos.xyz;
   normal = normalize(uMvp * vec4(vNormal, 0)).xyz;
-  tangent = vTangent;
-  bitangent = vBitangent;
+  tangent = normalize(uMvp * vec4(vTangent, 0)).xyz;
+  bitangent = normalize(uMvp * vec4(vBitangent, 0)).xyz;
   uv = vUv;
+  if (uv.x != 0 && uv.y != 0) {
+    TBN = inverse(mat3(tangent, bitangent, normal));
+    usenormalmap = 1;
+  }
+  else {
+    usenormalmap = 0;
+  }
 }
 )";
 
@@ -41,7 +50,8 @@ in vec3 normal;
 in vec2 uv;
 in vec3 tangent;
 in vec3 bitangent;
-
+in flat mat3 TBN;
+in flat int usenormalmap;
 out vec3 c_normal;
 out vec3 c_material;
 
@@ -50,9 +60,11 @@ layout(location = 5) uniform sampler2D material;
 layout(location = 6) uniform sampler2D normalmap;
 
 void main() {
-  c_normal = normal;
   c_material = texture(material, uv * texture_scale).xyz; 
-  c_material = texture(normalmap, uv * texture_scale).xyz; 
+  if (usenormalmap == 1)
+    c_normal = normalize((texture(normalmap, uv * texture_scale).xyz * 2 - 1) * TBN); 
+  else
+    c_normal = normal;
 }
 )";
 
@@ -149,7 +161,7 @@ void main() {
     float cone = light_dir[i].w;
     float cone_angle = max(dot(lDir, -lNormal), 0);
 
-    float corr = pow(1 - (min(max(abs(cone_angle-cone), 0), 1)), 20);
+    float corr = pow(1 - (min(max(abs(cone_angle-cone), 0), 1)), 10);
 
     float falloff = 1 / dist2;
     float diffuse = max(dot(lDir, normal), 0);

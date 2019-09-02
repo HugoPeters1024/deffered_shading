@@ -263,9 +263,38 @@ void cObj::renderBuffers(std::vector<float> &v_buf, std::vector<float> &n_buf, s
           uv_buf.push_back(t4.v[1]);
         }
         else {
-          for(int zz = 0; zz<12; zz++) {
-            uv_buf.push_back(0);
-          }
+          unsigned int vsize = v_buf.size();
+          Vector3 v1 = Vector3(v_buf[vsize - 8], v_buf[vsize - 7], v_buf[vsize - 6]);
+          Vector3 v2 = Vector3(v_buf[vsize - 5], v_buf[vsize - 4], v_buf[vsize - 3]);
+          Vector3 v3 = Vector3(v_buf[vsize - 2], v_buf[vsize - 1], v_buf[vsize - 0]);
+
+          Vector3 l1 = (v2 - v1);
+          Vector3 l2 = (v3 - v1);
+
+          Vector3 p = (v2 + v3) / 2;
+          Vector3 o = 2 * p;
+
+
+          // Generate uv's
+          // T1
+          uv_buf.push_back(0);
+          uv_buf.push_back(0);
+
+          uv_buf.push_back(0);
+          uv_buf.push_back(0);
+
+          uv_buf.push_back(0);
+          uv_buf.push_back(0);
+
+          // T2
+          uv_buf.push_back(0);
+          uv_buf.push_back(0);
+
+          uv_buf.push_back(0);
+          uv_buf.push_back(0);
+
+          uv_buf.push_back(0);
+          uv_buf.push_back(0);
         }
     }
     else
@@ -300,8 +329,8 @@ void cObj::renderBuffersTangents(std::vector<float> &v_buf, std::vector<float> &
      Vector2 uedge2 = uv3 - uv1;
 
      float r = 1.0f / (uedge1.x * uedge2.y - uedge1.y * uedge2.x);
-     Vector3 tangent = (vedge1 * uedge2.y - vedge2 * uedge1.y) * r;
-     Vector3 bitangent = (vedge2 * uedge1.x - vedge1 * uedge2.x) * r;
+     Vector3 tangent = ((vedge1 * uedge2.y - vedge2 * uedge1.y) * r).normalize();
+     Vector3 bitangent = ((vedge2 * uedge1.x - vedge1 * uedge2.x) * r).normalize();
 
      for(int q=0; q<3; q++) {
        t_buf.push_back(tangent.x);

@@ -12,6 +12,11 @@ Mesh* loadMesh(const char* filename) {
   cObj model = cObj(filename);
   model.renderBuffersTangents(vertices, normals, uvs, tangents, bitangents);
 
+  for(int i=0; i<12; i+=4) {
+    printf("%f, %f, %f\n", tangents[i], tangents[i+1], tangents[i+2]);
+  }
+  printf("-----------------\n");
+
 
   Mesh* mesh = new Mesh();
   mesh->vertex_count = vertices.size();
@@ -46,13 +51,13 @@ Mesh* loadMesh(const char* filename) {
 
   // Fill tangents
   glBindBuffer(GL_ARRAY_BUFFER, tbo);
-  glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), normals.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, tangents.size() * sizeof(float), tangents.data(), GL_STATIC_DRAW);
   glEnableVertexAttribArray(D_TANGENT_BUFFER_INDEX);
   glVertexAttribPointer(D_TANGENT_BUFFER_INDEX, 3, GL_FLOAT, GL_TRUE, 0, (void*)(sizeof(float) * 0));
 
   // Fill bitangents
   glBindBuffer(GL_ARRAY_BUFFER, btbo);
-  glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), normals.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, bitangents.size() * sizeof(float), bitangents.data(), GL_STATIC_DRAW);
   glEnableVertexAttribArray(D_BITANGENT_BUFFER_INDEX);
   glVertexAttribPointer(D_BITANGENT_BUFFER_INDEX, 3, GL_FLOAT, GL_TRUE, 0, (void*)(sizeof(float) * 0));
 
