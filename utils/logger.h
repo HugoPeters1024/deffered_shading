@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-enum LOG_LEVEL{L_DEBUG, L_INFO, L_CRITICAL, L_ERROR};
+enum LOG_LEVEL{L_DEBUG, L_INFO, L_WARNING, L_CRITICAL, L_ERROR};
 static const char* LOG_LEVEL_MAPPING[] = {
-  "DEBUG", "INFO", "CRITICAL", "ERROR",
+  "DEBUG", "INFO", "WARNING", "CRITICAL", "ERROR",
 };
 
 static int current_level = L_DEBUG;
@@ -28,6 +28,12 @@ void logInfo(const char* msg, ...) {
   va_list argptr;
   va_start(argptr, msg);
   log(L_INFO, msg, argptr);
+  va_end(argptr);
+}
+void logWarning(const char* msg, ...) {
+  va_list argptr;
+  va_start(argptr, msg);
+  log(L_WARNING, msg, argptr);
   va_end(argptr);
 }
 void logCritical(const char* msg, ...) { 

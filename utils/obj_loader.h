@@ -262,6 +262,11 @@ void cObj::renderBuffers(std::vector<float> &v_buf, std::vector<float> &n_buf, s
           uv_buf.push_back(t4.v[0]);
           uv_buf.push_back(t4.v[1]);
         }
+        else {
+          for(int zz = 0; zz<12; zz++) {
+            uv_buf.push_back(0);
+          }
+        }
     }
     else
     {
@@ -275,6 +280,10 @@ void cObj::renderBuffers(std::vector<float> &v_buf, std::vector<float> &n_buf, s
 void cObj::renderBuffersTangents(std::vector<float> &v_buf, std::vector<float> &n_buf, std::vector<float> &uv_buf, std::vector<float> &t_buf, std::vector<float> &bt_buf) const
 {
   renderBuffers(v_buf, n_buf, uv_buf);
+  if (uv_buf.size() == 0) {
+    logWarning("Model does not contain uv coordinates, nulling tangent data");
+    return;
+  }
   for(int i=0, ui=0; i<v_buf.size(); i+=9, ui+=6)
   {
      Vector3 v1 = Vector3(v_buf[i+0], v_buf[i+1], v_buf[i+2]);

@@ -14,14 +14,22 @@ int main(int argc, char** argv) {
 	glDebugMessageCallback(GLDEBUGPROC(gl_debug_output), nullptr); 
   glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
 
+
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
   GLFWwindow* window = glfwCreateWindow(D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT, "Yeah", NULL, NULL);
   if (!window) return 3;
   glfwMakeContextCurrent(window);
-  glfwSwapInterval(1);
   glEnable(GL_DEPTH_TEST);
+
+  // Print info
+  const GLubyte* vendor = glGetString(GL_VENDOR);
+  logDebug("Video card:\t\t%s", vendor);
+  const GLubyte* renderer = glGetString(GL_RENDERER);
+  logDebug("Renderer:\t\t%s", renderer);
+  const GLubyte* version = glGetString(GL_VERSION);
+  logDebug("OpenGL version:\t%s", version);
 
   FBO::g_buffer.init();
   FBO::post_buffer.init();
@@ -34,6 +42,8 @@ int main(int argc, char** argv) {
   Shaders::init();
   Shaders::lights_t lights;
 
+  Textures::init();
+
   auto quad = Meshes::loadMesh("quad.obj");
   auto mesh = Meshes::loadMesh("player.obj");
   auto cube = Meshes::loadMesh("cube.obj");
@@ -41,6 +51,7 @@ int main(int argc, char** argv) {
 
   auto tx_white = Textures::createTextureColor(1, 1, 1);
   auto tx_brick = Textures::loadTexture("textures/wall.jpg");
+  auto tx_brick_norm = Textures::loadTexture("textures/wall_norm.jpg");
 
   int int_Time = 0;
   float time = 0;
@@ -52,17 +63,16 @@ int main(int argc, char** argv) {
 
     for(int i=0; i<16; i+=1) {
       float v = (float)i / 16.0f * 6.28;
-      float x = sin(v);
-      float z = cos(v);
-      float r = 50;
-
-      lights.pos[i] = Vector4(r * x, 15, r * z, 0);
+      float x = sin(v + time);
+      float z = cos(v + time);
+      float r = 50 + 35 * sin(time); 
+      lights.pos[i] = Vector4(r * x, 15 + 10 * cos(4 * v + 4 * time), r * z, 0);
       lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 580;
-      lights.dir[i] = Vector4((Vector3(0, -20 + 40 * sin(3.4*v + glfwGetTime()), 0)-lights.pos[i].xyz()).normalized(), 0.959 - 0.02 * sin(v+glfwGetTime()));
+      lights.dir[i] = Vector4((Vector3(0, -10 + 30 * sin(3.4*v + glfwGetTime()), 0)-lights.pos[i].xyz()).normalized(), 0.959 - 0.02 * sin(v+glfwGetTime()));
     }
 
     lights.pos[16] = Vector4(0, 70, 0, 0);
-    lights.col[16] = Vector4(1) * 1000;
+    lights.col[16] = Vector4(1) * 1500;
     lights.dir[16] = Vector4(0, 0, 0, 0);
 
     for(int i=17; i<32; i++) {
@@ -83,9 +93,8 @@ int main(int argc, char** argv) {
     Matrix4 mvp = Matrix4::FromAxisRotations(0, 0, 0);
     Shaders::sh_main.use(camera.getMatrix());
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tx_brick);
-    Shaders::sh_main.setTextureScale(5);
+    Textures::disableNormalMap();
+    Textures::setTexture(tx_white);
 
     glBindVertexArray(mesh->vao);
     Shaders::sh_main.setMvp(mvp);
@@ -99,10 +108,16 @@ int main(int argc, char** argv) {
       glDrawArrays(GL_TRIANGLES, 0, cube->vertex_count);
     }
 
+
+    Textures::setTexture(tx_brick);
+    Shaders::sh_main.setTextureScale(5);
+
+    Textures::setNormalMap(tx_brick_norm);
     Matrix4 floor_mvp = Matrix4::FromScale(150, 150, 150);
     Shaders::sh_main.setMvp(floor_mvp);
     glBindVertexArray(floor->vao);
     glDrawArrays(GL_TRIANGLES, 0, floor->vertex_count);
+    Textures::disableNormalMap();
 
 
     // <--- Draw combined to post buffer ---->
@@ -127,13 +142,14 @@ int main(int argc, char** argv) {
     glViewport(0, 0, w, h);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    Shaders::sh_post.use(FBO::post_buffer.tex);
+    Shaders::sh_post.use(FBO::post_buffer.tex, time);
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
 
     keyboard.swapBuffers();
     glfwSwapBuffers(window);
     glfwPollEvents();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000/80));
   }
 }
 

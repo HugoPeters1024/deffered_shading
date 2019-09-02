@@ -10,10 +10,14 @@ static const char* vs_src = R"(
 layout(location=0) in vec3 vPos;
 layout(location=1) in vec3 vNormal;
 layout(location=2) in vec2 vUv;
+layout(location=3) in vec3 vTangent;
+layout(location=4) in vec3 vBitangent;
 
 out vec3 position;
 out vec3 normal;
 out vec2 uv;
+out vec3 tangent;
+out vec3 bitangent;
 
 layout(location = 0) uniform mat4 uCamera;
 layout(location = 1) uniform mat4 uMvp;
@@ -23,6 +27,8 @@ void main() {
   gl_Position = uCamera * worldPos;
   position = worldPos.xyz;
   normal = normalize(uMvp * vec4(vNormal, 0)).xyz;
+  tangent = vTangent;
+  bitangent = vBitangent;
   uv = vUv;
 }
 )";
@@ -33,17 +39,20 @@ static const char* fs_src = R"(
 in vec3 position;
 in vec3 normal;
 in vec2 uv;
+in vec3 tangent;
+in vec3 bitangent;
 
 out vec3 c_normal;
 out vec3 c_material;
 
 layout(location = 3) uniform float texture_scale;
-
 layout(location = 5) uniform sampler2D material;
+layout(location = 6) uniform sampler2D normalmap;
 
 void main() {
   c_normal = normal;
   c_material = texture(material, uv * texture_scale).xyz; 
+  c_material = texture(normalmap, uv * texture_scale).xyz; 
 }
 )";
 
@@ -78,10 +87,12 @@ static const char* post_fs_src = R"(
 in vec2 uv;
 out vec3 color;
 
-uniform sampler2D tex;
+layout(location = 0) uniform sampler2D tex;
+layout(location = 4) uniform float time;
 
 void main() {
- color = texture(tex, uv).xyz;
+ vec3 map = texture(tex, uv).xyz;
+ color = map;
 }
 
 )";
@@ -126,26 +137,25 @@ void main() {
   vec3 material = texture(t_material, uv).xyz;
   float depth = (texture(t_depth, uv)).x;
   vec3 pos = WorldPosFromDepth(depth);
+  vec3 E = normalize(uCamPos - pos);
 
   // ambient
-  color = material * 0.1;
-  for(int i=0; i<32; i++) {
+  color = material * 0.2;
+  for(int i=0; i<32; i+=1) {
     vec3 lVec = light_pos[i].xyz - pos;
     float dist2 = dot(lVec, lVec);
     vec3 lDir = lVec / sqrt(dist2);
     vec3 lNormal = light_dir[i].xyz;
     float cone = light_dir[i].w;
-    float corr = 1;
     float cone_angle = max(dot(lDir, -lNormal), 0);
-    if ((cone_angle) < cone) 
-      corr = max(1 - 10 * pow(cone+1, 3) * abs(cone_angle-cone), 0);
+
+    float corr = pow(1 - (min(max(abs(cone_angle-cone), 0), 1)), 20);
+
     float falloff = 1 / dist2;
     float diffuse = max(dot(lDir, normal), 0);
 
-    //vec3 E = normalize(uCamPos - light_pos[i].xyz);
-    vec3 E = normalize(uCamPos - pos);
     vec3 R = reflect(-lDir, normal);
-    float specular = pow(max(dot(E, R), 0), 120);
+    float specular = pow(max(dot(E, R), 0), 40);
     color += (specular + diffuse) * material * light_col[i].xyz * falloff * corr;
   }
 }
@@ -221,14 +231,14 @@ struct sh_combinator_t {
     
     // Populate camera pos for specular lighting
     glUniform3f(D_CAMERAPOS_UNIFORM_INDEX, cam_pos.x, cam_pos.y, cam_pos.z);
-
   }
 } sh_combinator;
 
 struct sh_post_t {
   GLuint program_id;
-  void use(const Texture &tex) const {
+  void use(const Texture &tex, float time) const {
     glUseProgram(program_id);
+    glUniform1f(D_TIME_UNIFORM_INDEX, time);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
   }
@@ -240,17 +250,25 @@ void init() {
   // QUAD SHADER
   sh_quad.program_id = loadShaderLiteral(quad_vs_src, quad_fs_src);
   // MAIN SHADER
+  logInfo("Compiling main shader");
   sh_main.program_id = loadShaderLiteral(vs_src, fs_src);
   glUseProgram(sh_main.program_id);
   glUniform1i(D_TEXTURE_MATERIAL_INDEX, 0);
+  glUniform1i(D_TEXTURE_NORMALMAP_INDEX, 1);
   sh_main.setTextureScale(1);
+  logInfo("Main shader compiled succesfully");
+
   // POST SHADER
+  logInfo("Compiling post processing shader");
   sh_post.program_id = loadShaderLiteral(quad_vs_src, post_fs_src);
+  logInfo("post processing shader compiled succesfully");
 
 
   // COMBINATOR
+  logInfo("Compiling combination shader");
   sh_combinator.program_id = loadShaderLiteral(quad_vs_src, defer_fs_src); 
   glUseProgram(sh_combinator.program_id);
+  logInfo("Combination shader compiled succesfully");
 
   // g buffer bindings
   glUniform1i(D_NORMAL_GTEXTURE_INDEX,   0);
