@@ -117,6 +117,7 @@ int main(int argc, char** argv) {
     Shaders::sh_main.setMvp(floor_mvp);
     glBindVertexArray(floor->vao);
     glDrawArrays(GL_TRIANGLES, 0, floor->vertex_count);
+
     Textures::disableNormalMap();
 
 

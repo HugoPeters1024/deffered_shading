@@ -159,9 +159,12 @@ void main() {
     vec3 lDir = lVec / sqrt(dist2);
     vec3 lNormal = light_dir[i].xyz;
     float cone = light_dir[i].w;
-    float cone_angle = max(dot(lDir, -lNormal), 0);
 
-    float corr = pow(1 - (min(max(abs(cone_angle-cone), 0), 1)), 10);
+    //float corr = pow(1 - 0.5*(min(max(abs(cone_angle-cone), 0), 1)), 1000);
+     float corr = 1;
+    float cone_angle = dot(lDir, -lNormal);
+    if ((cone_angle) < cone)
+      corr = max(1 - 16 * abs(cone_angle-cone), 0);
 
     float falloff = 1 / dist2;
     float diffuse = max(dot(lDir, normal), 0);
