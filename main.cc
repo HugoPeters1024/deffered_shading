@@ -148,6 +148,7 @@ int main(int argc, char** argv) {
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
 
     keyboard.swapBuffers();
+    glfwSwapInterval(2);
     glfwSwapBuffers(window);
     glfwPollEvents();
     std::this_thread::sleep_for(std::chrono::milliseconds(1000/80));

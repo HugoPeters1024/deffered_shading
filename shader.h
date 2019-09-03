@@ -4,7 +4,6 @@ namespace Shaders {
 
 using namespace Textures;
 
-
 static const char* vs_src = R"(
 #version 450
 layout(location=0) in vec3 vPos;
@@ -52,6 +51,7 @@ in vec3 tangent;
 in vec3 bitangent;
 in flat mat3 TBN;
 in flat int usenormalmap;
+
 out vec3 c_normal;
 out vec3 c_material;
 
@@ -61,10 +61,21 @@ layout(location = 6) uniform sampler2D normalmap;
 
 void main() {
   c_material = texture(material, uv * texture_scale).xyz; 
-  if (usenormalmap == 1)
-    c_normal = normalize((texture(normalmap, uv * texture_scale).xyz * 2 - 1) * TBN); 
-  else
+  if (usenormalmap == 1) 
+  {
+    // Read normal and restore the range
+    vec3 mn = texture(normalmap, uv * texture_scale).xyz * 2 - 1;
+    mn = vec3(mn.x, -mn.y, mn.z);
+    // Transform the normal to worldspace
+    c_normal = normalize(mn * TBN); 
+  }
+  else 
+  {
     c_normal = normal;
+  }
+
+  // Compress the normal
+  c_normal = c_normal / 2 + 0.5;
 }
 )";
 
@@ -145,24 +156,23 @@ vec3 WorldPosFromDepth(float depth) {
 }
 
 void main() {
-  vec3 normal = texture(t_normal, uv).xyz;
+  vec3 normal = normalize(texture(t_normal, uv).xyz * 2 - 1);
   vec3 material = texture(t_material, uv).xyz;
-  float depth = (texture(t_depth, uv)).x;
+  float depth = texture(t_depth, uv).x;
   vec3 pos = WorldPosFromDepth(depth);
   vec3 E = normalize(uCamPos - pos);
 
   // ambient
   color = material * 0.2;
-  for(int i=0; i<32; i+=1) {
+  for(int i=0; i<32; i++) {
     vec3 lVec = light_pos[i].xyz - pos;
     float dist2 = dot(lVec, lVec);
     vec3 lDir = lVec / sqrt(dist2);
     vec3 lNormal = light_dir[i].xyz;
     float cone = light_dir[i].w;
 
-    //float corr = pow(1 - 0.5*(min(max(abs(cone_angle-cone), 0), 1)), 1000);
-     float corr = 1;
-    float cone_angle = dot(lDir, -lNormal);
+    float corr = 1;
+    float cone_angle = max(dot(lDir, -lNormal), 0);
     if ((cone_angle) < cone)
       corr = max(1 - 16 * abs(cone_angle-cone), 0);
 
@@ -172,7 +182,10 @@ void main() {
     vec3 R = reflect(-lDir, normal);
     float specular = pow(max(dot(E, R), 0), 40);
     color += (specular + diffuse) * material * light_col[i].xyz * falloff * corr;
+    //color += pow(cone_angle, 5) * pow(depth, 5) * normalize(light_col[i].xyz);
   }
+  float mist = pow(depth, 500);
+  color = mist * vec3(0.5) + (1-mist) * color;
 }
 )";
 
