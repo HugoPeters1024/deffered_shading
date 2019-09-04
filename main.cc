@@ -48,6 +48,7 @@ int main(int argc, char** argv) {
   auto mesh = Meshes::loadMesh("player.obj");
   auto cube = Meshes::loadMesh("cube.obj");
   auto floor = Meshes::loadMesh("floor.obj");
+  auto cone = Meshes::loadMesh("cone.obj");
 
   auto tx_white = Textures::createTextureColor(1, 1, 1);
   auto tx_brick = Textures::loadTexture("textures/wall.jpg");
@@ -59,7 +60,7 @@ int main(int argc, char** argv) {
   while(!glfwWindowShouldClose(window))
   {
     int_Time += 1;
-    time += 0.01f;
+    time = glfwGetTime() / 2;
 
     for(int i=0; i<16; i+=1) {
       float v = (float)i / 16.0f * 6.28;
@@ -72,11 +73,13 @@ int main(int argc, char** argv) {
     }
 
     lights.pos[16] = Vector4(0, 70, 0, 0);
-    lights.col[16] = Vector4(1) * 1500;
-    lights.dir[16] = Vector4(0, 0, 0, 0);
+    lights.col[16] = Vector4(1) * 500;
+    lights.dir[16] = Vector4(0, -1, 0, 0);
 
     for(int i=17; i<32; i++) {
       lights.pos[i] = Vector4(1000000000);
+      lights.col[i] = Vector4(0);
+      lights.dir[i] = Vector4(0);
     }
 
 
@@ -96,14 +99,28 @@ int main(int argc, char** argv) {
     Textures::disableNormalMap();
     Textures::setTexture(tx_white);
 
+    /*
     glBindVertexArray(mesh->vao);
     Shaders::sh_main.setMvp(mvp);
     glDrawArrays(GL_TRIANGLES, 0, mesh->vertex_count);
+    */
+
+    for(int i=0; i<17; i++) {
+      mvp = Matrix4::FromTranslation(lights.pos[i].xyz()) * 
+        Matrix4::FromNormal(lights.dir[i].xyz()) * 
+        Matrix4::FromScale(5+glfwGetTime()) *
+        Matrix4::FromScale(0.3, 0.3, 1) * 
+        Matrix4::FromTranslation(0, 0, 1.5);
+      mvp.print();
+      glBindVertexArray(cone->vao);
+      Shaders::sh_main.setMvp(mvp);
+      glDrawArrays(GL_TRIANGLES, 0, cone->vertex_count);
+    }
 
 
     glBindVertexArray(cube->vao);
     for(int i=0; i<32; i++) {
-      Matrix4 cube_mvp = Matrix4::FromTranslation(lights.pos[i].xyz() + 2 * lights.dir[i].xyz());
+      Matrix4 cube_mvp = Matrix4::FromTranslation(lights.pos[i].xyz());
       Shaders::sh_main.setMvp(cube_mvp);
       glDrawArrays(GL_TRIANGLES, 0, cube->vertex_count);
     }
@@ -151,7 +168,7 @@ int main(int argc, char** argv) {
     glfwSwapInterval(2);
     glfwSwapBuffers(window);
     glfwPollEvents();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000/80));
+//    std::this_thread::sleep_for(std::chrono::milliseconds(1000/80));
   }
 }
 

@@ -65,7 +65,7 @@ void main() {
   {
     // Read normal and restore the range
     vec3 mn = texture(normalmap, uv * texture_scale).xyz * 2 - 1;
-    mn = vec3(mn.x, -mn.y, mn.z);
+    mn = vec3(-mn.x, mn.y, mn.z);
     // Transform the normal to worldspace
     c_normal = normalize(mn * TBN); 
   }
@@ -173,7 +173,7 @@ void main() {
 
     float corr = 1;
     float cone_angle = max(dot(lDir, -lNormal), 0);
-    if ((cone_angle) < cone)
+    if (cone_angle < cone)
       corr = max(1 - 16 * abs(cone_angle-cone), 0);
 
     float falloff = 1 / dist2;
@@ -182,8 +182,8 @@ void main() {
     vec3 R = reflect(-lDir, normal);
     float specular = pow(max(dot(E, R), 0), 40);
     color += (specular + diffuse) * material * light_col[i].xyz * falloff * corr;
-    //color += pow(cone_angle, 5) * pow(depth, 5) * normalize(light_col[i].xyz);
   }
+
   float mist = pow(depth, 500);
   color = mist * vec3(0.5) + (1-mist) * color;
 }

@@ -37,8 +37,6 @@
 // FRAMEBUFFERS
 #define D_FRAMEBUFFER_WIDTH  640
 #define D_FRAMEBUFFER_HEIGHT 480
-#define D_FRAMEBUFFER_WIDTH  1920
-#define D_FRAMEBUFFER_HEIGHT 1080
 
 #include "utils/gl_debug.h"
 #include "utils/logger.h"

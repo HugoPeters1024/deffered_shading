@@ -117,6 +117,18 @@ public:
   Matrix4() {}
   Matrix4(const mat4x4 data) { mat4x4_dup(this->data, data); }
   Matrix4(const Matrix4 &m) : Matrix4(m.data) {}
+  static Matrix4 FromColumnVectors(Vector3 &v0, Vector3 &v1, Vector3 &v2) {
+    mat4x4 m;
+    vec4 vv0 = { v0.x, v0.y, v0.z, 0 };
+    vec4 vv1 = { v1.x, v1.y, v1.z, 0 };
+    vec4 vv2 = { v2.x, v2.y, v2.z, 0 };
+    vec4 vv3 = { 0, 0, 0, 1};
+    mat4x4_set_col(m, vv0, 0);
+    mat4x4_set_col(m, vv1, 1);
+    mat4x4_set_col(m, vv2, 2);
+    mat4x4_set_col(m, vv3, 3);
+    return Matrix4(m);
+  }
   void unpack(mat4x4 f) const { mat4x4_dup(f, data); }
   float* operator[] (int column) { return data[column]; }
   Matrix4 inverted() const { mat4x4 r; mat4x4_invert(r, data); return Matrix4(r); }
@@ -157,6 +169,18 @@ public:
     return Rx * Ry * Rz;
   }
   static Matrix4 FromAxisRotations(Vector3 v) { return FromAxisRotations(v.x, v.y, v.z); }
+  static Matrix4 FromNormal(Vector3 normal) {
+    Vector3 from = Vector3(0, 0, 1);
+    Vector3 a = Vector3::cross(from, normal).normalized();
+    float alpha = acos(Vector3::dot(from, normal));
+    float s = sin(alpha);
+    float c = cos(alpha);
+
+    Vector3 c1 = Vector3(a.x * a.x * (1-c) + c, a.x * a.y * (1-c) + s * a.z, a.x * a.z * (1-c) - s * a.y);
+    Vector3 c2 = Vector3(a.x * a.y * (1-c) - s * a.z, a.y * a.y * (1-c) + c, a.y * a.z * (1-c) + s * a.x);
+    Vector3 c3 = Vector3(a.x * a.z * (1-c) + s * a.y, a.y * a.z * (1-c) - s * a.x, a.z * a.z * (1-c) + c); 
+    return Matrix4::FromColumnVectors(c1, c2, c3);
+  }
   static Matrix4 FromPerspective(float fov, float ratio, float znear, float zfar) {
     mat4x4 r;
     mat4x4_perspective(r, fov, ratio, znear, zfar);
@@ -264,6 +288,7 @@ struct Line {
     if (dis > b) b = dis;
   }
 };
+
 
 
 

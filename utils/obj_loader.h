@@ -149,19 +149,23 @@ void cObj::renderBuffers(std::vector<float> &v_buf, std::vector<float> &n_buf, s
       for(int i = 0; i<3; i++)
       {
         int vi = f.vertex[i];
-        int ni = f.normal[i];
-        int ti = f.texture[i];
         v_buf.push_back(vertices[vi].v[0]);
         v_buf.push_back(vertices[vi].v[1]);
         v_buf.push_back(vertices[vi].v[2]);
 
+        int ni = f.normal[i];
         n_buf.push_back(normals[ni].v[0]);
         n_buf.push_back(normals[ni].v[1]);
         n_buf.push_back(normals[ni].v[2]);
 
         if (texcoords.size() > 0) { 
+          int ti = f.texture[i];
           uv_buf.push_back(texcoords[ti].v[0]);
           uv_buf.push_back(texcoords[ti].v[1]);
+        }
+        else {
+          uv_buf.push_back(0);
+          uv_buf.push_back(0);
         }
       }
     }
@@ -179,14 +183,6 @@ void cObj::renderBuffers(std::vector<float> &v_buf, std::vector<float> &n_buf, s
         vertex n3 = normals[f.normal[2]];
         vertex n4 = normals[f.normal[3]];
 
-        vertex t1, t2, t3, t4;
-        if (texcoords.size() > 0) {
-          // Extract the 4 texcoords
-          t1 = texcoords[f.texture[0]];
-          t2 = texcoords[f.texture[1]];
-          t3 = texcoords[f.texture[2]];
-          t4 = texcoords[f.texture[3]];
-        }
 
 
         // Triangle 1
@@ -242,6 +238,12 @@ void cObj::renderBuffers(std::vector<float> &v_buf, std::vector<float> &n_buf, s
         n_buf.push_back(n4.v[2]);
         
         if (texcoords.size() > 0) {
+          // Extract the 4 texcoords
+          vertex t1 = texcoords[f.texture[0]];
+          vertex t2 = texcoords[f.texture[1]];
+          vertex t3 = texcoords[f.texture[2]];
+          vertex t4 = texcoords[f.texture[3]];
+
           // Triangle 1 textures
           uv_buf.push_back(t1.v[0]);
           uv_buf.push_back(t1.v[1]);

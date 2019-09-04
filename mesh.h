@@ -12,12 +12,6 @@ Mesh* loadMesh(const char* filename) {
   cObj model = cObj(filename);
   model.renderBuffersTangents(vertices, normals, uvs, tangents, bitangents);
 
-  for(int i=0; i<12; i+=4) {
-    printf("%f, %f, %f\n", tangents[i], tangents[i+1], tangents[i+2]);
-  }
-  printf("-----------------\n");
-
-
   Mesh* mesh = new Mesh();
   mesh->vertex_count = vertices.size();
   
