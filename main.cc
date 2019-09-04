@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
   logDebug("OpenGL version:\t%s", version);
 
   FBO::g_buffer.init();
+  FBO::cone_buffer.init();
   FBO::post_buffer.init();
 
   Camera::Camera camera = Camera::Camera(1.25);
@@ -89,7 +90,7 @@ int main(int argc, char** argv) {
 
     camera.update(w/h, &keyboard);
 
-    FBO::g_buffer.bind();
+    FBO::cone_buffer.bind();
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
     glViewport(0, 0, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT); 
 
@@ -98,12 +99,6 @@ int main(int argc, char** argv) {
 
     Textures::disableNormalMap();
     Textures::setTexture(tx_white);
-
-    /*
-    glBindVertexArray(mesh->vao);
-    Shaders::sh_main.setMvp(mvp);
-    glDrawArrays(GL_TRIANGLES, 0, mesh->vertex_count);
-    */
 
     for(int i=0; i<17; i++) {
       mvp = Matrix4::FromTranslation(lights.pos[i].xyz()) * 
@@ -116,6 +111,16 @@ int main(int argc, char** argv) {
       Shaders::sh_main.setMvp(mvp);
       glDrawArrays(GL_TRIANGLES, 0, cone->vertex_count);
     }
+
+
+    FBO::g_buffer.bind();
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+
+    mvp = Matrix4::Identity();
+    glBindVertexArray(mesh->vao);
+    Shaders::sh_main.setMvp(mvp);
+    glDrawArrays(GL_TRIANGLES, 0, mesh->vertex_count);
+
 
 
     glBindVertexArray(cube->vao);

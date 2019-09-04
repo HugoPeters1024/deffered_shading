@@ -185,7 +185,7 @@ void main() {
   }
 
   float mist = pow(depth, 500);
-  color = mist * vec3(0.5) + (1-mist) * color;
+  color = mist * vec3(0.0) + (1-mist) * color;
 }
 )";
 

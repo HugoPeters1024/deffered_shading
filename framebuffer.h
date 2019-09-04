@@ -43,6 +43,38 @@ namespace FBO {
     }
   } g_buffer;
 
+  struct cone_buffer_t {
+    GLuint id, tex, depthTex;
+    void bind() const { glBindFramebuffer(GL_FRAMEBUFFER, id); }
+    void init() {
+      glGenFramebuffers(1, &id);
+      glBindFramebuffer(GL_FRAMEBUFFER, id);
+
+      glGenTextures(1, &tex);
+      glBindTexture(GL_TEXTURE_2D, tex);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex, 0);
+
+      // Add depth buffering
+      glGenTextures(1, &depthTex);
+      glBindTexture(GL_TEXTURE_2D, depthTex);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT, 0,GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,GL_TEXTURE_2D, depthTex,0);
+
+      GLenum DrawBuffers [1] = {GL_COLOR_ATTACHMENT0};
+      glDrawBuffers(2, DrawBuffers);
+      auto fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+      if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
+          std::cout << "Framebuffer not complete: " << fboStatus <<  " /  " << GL_FRAMEBUFFER_UNSUPPORTED << std::endl;
+      if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        exit(7);
+    }
+  } cone_buffer;
+
   struct post_buffer_t {
     GLuint id, tex;
     void bind() const { glBindFramebuffer(GL_FRAMEBUFFER, id); }
