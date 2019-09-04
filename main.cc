@@ -95,20 +95,16 @@ int main(int argc, char** argv) {
     glViewport(0, 0, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT); 
 
     Matrix4 mvp = Matrix4::FromAxisRotations(0, 0, 0);
-    Shaders::sh_main.use(camera.getMatrix());
+    Shaders::sh_cone.use(camera.getMatrix());
 
-    Textures::disableNormalMap();
-    Textures::setTexture(tx_white);
-
+    glBindVertexArray(cone->vao);
     for(int i=0; i<17; i++) {
       mvp = Matrix4::FromTranslation(lights.pos[i].xyz()) * 
         Matrix4::FromNormal(lights.dir[i].xyz()) * 
         Matrix4::FromScale(5+glfwGetTime()) *
         Matrix4::FromScale(0.3, 0.3, 1) * 
         Matrix4::FromTranslation(0, 0, 1.5);
-      mvp.print();
-      glBindVertexArray(cone->vao);
-      Shaders::sh_main.setMvp(mvp);
+      Shaders::sh_cone.setMvp(mvp);
       glDrawArrays(GL_TRIANGLES, 0, cone->vertex_count);
     }
 
@@ -116,6 +112,9 @@ int main(int argc, char** argv) {
     FBO::g_buffer.bind();
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 
+    Shaders::sh_main.use(camera.getMatrix());
+    Textures::disableNormalMap();
+    Textures::setTexture(tx_white);
     mvp = Matrix4::Identity();
     glBindVertexArray(mesh->vao);
     Shaders::sh_main.setMvp(mvp);
@@ -165,7 +164,7 @@ int main(int argc, char** argv) {
     glViewport(0, 0, w, h);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    Shaders::sh_post.use(FBO::post_buffer.tex, time);
+    Shaders::sh_post.use(FBO::cone_buffer.tex, time);
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
 

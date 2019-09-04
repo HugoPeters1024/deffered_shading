@@ -189,9 +189,60 @@ void main() {
 }
 )";
 
+static const char* cone_vs_src = R"(
+#version 450
+
+layout(location=0) in vec3 vPos;
+
+layout(location=0) uniform mat4 camera;
+layout(location=1) uniform mat4 mvp;
+
+void main() {
+  gl_Position = camera * mvp * vec4(vPos, 1);
+}
+)";
+
+static const char* cone_gs_src = R"(
+#version 450
+
+layout(triangles) in;
+layout(triangle_strip, max_vertices=6) out;
+
+void main() {
+  for(int i=0; i<3; i++) {
+    gl_Position = gl_in[i].gl_Position;
+    EmitVertex();
+  }
+  EndPrimitive();
+
+  for(int i=0; i<3; i++) {
+    gl_Position = gl_in[i].gl_Position + vec4(0, 20, 0, 0);
+    EmitVertex();
+  }
+  EndPrimitive();
+}
+)";
+
+static const char* cone_fs_src = R"(
+#version 450
+
+out vec3 color;
+
+void main() {
+  color = vec3(1, 0, 0);
+}
+)";
+
 static inline GLuint loadShaderLiteral(const char* vs, const char* fs) {
     return GenerateProgram(
         CompileShader(GL_VERTEX_SHADER, vs),
+        CompileShader(GL_FRAGMENT_SHADER, fs));
+}
+
+static inline GLuint loadShaderLiteral(const char* vs, const char* gs, const char* fs) {
+    return GenerateProgram(
+        CompileShader(GL_VERTEX_SHADER, vs),
+        CompileShader(GL_GEOMETRY_SHADER, gs),
         CompileShader(GL_FRAGMENT_SHADER, fs));
 }
 
@@ -234,6 +285,24 @@ struct sh_main_t {
     setCamera(camera);
   }
 } sh_main;
+
+struct sh_cone_t {
+  GLuint program_id;
+  void setCamera(const Matrix4 &camera) const {
+    mat4x4 m_camera;
+    camera.unpack(m_camera);
+    glUniformMatrix4fv(D_CAMERA_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)m_camera);
+  }
+  void setMvp(const Matrix4 &mvp) const {
+    mat4x4 m_mvp;
+    mvp.unpack(m_mvp);
+    glUniformMatrix4fv(D_MVP_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)m_mvp);
+  }
+  void use(const Matrix4 &camera) const {
+    glUseProgram(program_id);
+    setCamera(camera);
+  }
+} sh_cone;
 
 struct sh_combinator_t {
   // Combination shader that combines to the g buffers to a quad
@@ -285,6 +354,11 @@ void init() {
   glUniform1i(D_TEXTURE_NORMALMAP_INDEX, 1);
   sh_main.setTextureScale(1);
   logInfo("Main shader compiled succesfully");
+
+  // CONE SHADER
+  logInfo("Compiling cone shader");
+  sh_cone.program_id = loadShaderLiteral(cone_vs_src, cone_gs_src, cone_fs_src);
+  logInfo("Compiling cone shader completed (id: %i)", sh_cone.program_id);
 
   // POST SHADER
   logInfo("Compiling post processing shader");
