@@ -130,6 +130,8 @@ layout(location = 2)  uniform vec3      uCamPos;
 layout(location = 15) uniform sampler2D t_normal;
 layout(location = 16) uniform sampler2D t_material;
 layout(location = 17) uniform sampler2D t_depth;
+layout(location = 18) uniform sampler2D t_cone;
+layout(location = 19) uniform sampler2D t_cone_depth;
 
 out vec3 color;
 
@@ -184,7 +186,12 @@ void main() {
     color += (specular + diffuse) * material * light_col[i].xyz * falloff * corr;
   }
 
-  float mist = pow(depth, 500);
+  float ldepth = texture(t_cone_depth, uv).x;
+  if (ldepth < depth) {
+    depth = ldepth;
+    color += texture(t_cone, uv).xyz * 0.25;
+  }
+  float mist = pow(depth, 5000);
   color = mist * vec3(0.0) + (1-mist) * color;
 }
 )";
@@ -194,42 +201,76 @@ static const char* cone_vs_src = R"(
 
 layout(location=0) in vec3 vPos;
 
-layout(location=0) uniform mat4 camera;
-layout(location=1) uniform mat4 mvp;
-
 void main() {
-  gl_Position = camera * mvp * vec4(vPos, 1);
+  gl_Position = vec4(vPos, 1);
 }
 )";
 
 static const char* cone_gs_src = R"(
 #version 450
 
-layout(triangles) in;
-layout(triangle_strip, max_vertices=6) out;
+layout(points) in;
+layout(triangle_strip, max_vertices=36) out;
+
+layout(location=0) uniform mat4 camera;
+layout(location=1) uniform mat4 mvp;
+layout(location=2) uniform vec4 cone_data;
+
+float getAngle(int p) {
+  return (p / 12.0f) * 6.28;
+}
+
+mat4 rotationX( in float angle ) {
+	return mat4(	1.0,		0,			0,			0,
+			 		0, 	cos(angle),	-sin(angle),		0,
+					0, 	sin(angle),	 cos(angle),		0,
+					0, 			0,			  0, 		1);
+}
+
+mat4 rotationY( in float angle ) {
+	return mat4(	cos(angle),		0,		sin(angle),	0,
+			 				0,		1.0,			 0,	0,
+					-sin(angle),	0,		cos(angle),	0,
+							0, 		0,				0,	1);
+}
+
+mat4 rotationZ( in float angle ) {
+	return mat4(	cos(angle),		-sin(angle),	0,	0,
+			 		sin(angle),		cos(angle),		0,	0,
+							0,				0,		1,	0,
+							0,				0,		0,	1);
+}
 
 void main() {
-  for(int i=0; i<3; i++) {
-    gl_Position = gl_in[i].gl_Position;
-    EmitVertex();
-  }
-  EndPrimitive();
+  mat4 t = camera * mvp;
+  vec3 origin = vec3(0, 0, 0);
+  float angle = acos(cone_data.w);
+  vec3 on_circle = (rotationX(angle) * vec4(0, 0, 1, 1)).xyz; 
 
-  for(int i=0; i<3; i++) {
-    gl_Position = gl_in[i].gl_Position + vec4(0, 20, 0, 0);
+  for(int p=0; p<12; p++) {
+    float a1 = getAngle(p);
+    float a2 = getAngle(p+1);
+    vec4 p1 = rotationZ(a1) * vec4(on_circle, 1);
+    vec4 p2 = rotationZ(a2) * vec4(on_circle, 1);
+    gl_Position = t * vec4(origin, 1);
     EmitVertex();
+    gl_Position = t * p1;
+    EmitVertex();
+    gl_Position = t * p2;
+    EmitVertex();
+    EndPrimitive();
   }
-  EndPrimitive();
 }
 )";
 
 static const char* cone_fs_src = R"(
 #version 450
 
+layout(location = 3) uniform vec3 light_col;
 out vec3 color;
 
 void main() {
-  color = vec3(1, 0, 0);
+  color = light_col;
 }
 )";
 
@@ -298,6 +339,11 @@ struct sh_cone_t {
     mvp.unpack(m_mvp);
     glUniformMatrix4fv(D_MVP_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)m_mvp);
   }
+  void setCone(const Vector4 &dir, const Vector4 &color) {
+    glUniform4f(2, dir.x, dir.y, dir.z, dir.w);
+    Vector3 c = color.xyz().normalized();
+    glUniform3f(3, c.x, c.y, c.z);
+  }
   void use(const Matrix4 &camera) const {
     glUseProgram(program_id);
     setCamera(camera);
@@ -307,7 +353,15 @@ struct sh_cone_t {
 struct sh_combinator_t {
   // Combination shader that combines to the g buffers to a quad
   GLuint program_id;
-  void use(const lights_t &lights, const Matrix4 &camera, const Vector3 &cam_pos, Texture g_norm, Texture g_mat, Texture g_depth) const {
+  void use(const lights_t &lights,
+      const Matrix4 &camera,
+      const Vector3 &cam_pos,
+      Texture g_norm,
+      Texture g_mat,
+      Texture g_depth,
+      Texture g_cone,
+      Texture g_cone_depth) const 
+  {
     glUseProgram(program_id);
     // Update te light suite
     glBindBuffer(GL_UNIFORM_BUFFER, lights_buffer);
@@ -320,6 +374,10 @@ struct sh_combinator_t {
     glBindTexture(GL_TEXTURE_2D, g_mat);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, g_depth);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, g_cone);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, g_cone_depth);
 
     // Populate camera transformation for restoring the fragment position from depth buffer
     mat4x4 m_camera;
@@ -373,9 +431,11 @@ void init() {
   logInfo("Combination shader compiled succesfully");
 
   // g buffer bindings
-  glUniform1i(D_NORMAL_GTEXTURE_INDEX,   0);
-  glUniform1i(D_MATERIAL_GTEXTURE_INDEX, 1);
-  glUniform1i(D_DEPTH_GTEXTURE_INDEX,    2);
+  glUniform1i(D_NORMAL_GTEXTURE_INDEX,         0);
+  glUniform1i(D_MATERIAL_GTEXTURE_INDEX,       1);
+  glUniform1i(D_DEPTH_GTEXTURE_INDEX,          2);
+  glUniform1i(D_CONE_GTEXTURE_INDEX,           3);
+  glUniform1i(D_CONE_DEPTH_GTEXTURE_INDEX,     4);
 
   // lights
   glGenBuffers(1, &lights_buffer);

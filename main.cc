@@ -50,6 +50,10 @@ int main(int argc, char** argv) {
   auto cube = Meshes::loadMesh("cube.obj");
   auto floor = Meshes::loadMesh("floor.obj");
   auto cone = Meshes::loadMesh("cone.obj");
+  float cone_data[] = {
+    0, 0, 0,
+  };
+  auto cone2 = Meshes::loadMeshPoints(3, cone_data);
 
   auto tx_white = Textures::createTextureColor(1, 1, 1);
   auto tx_brick = Textures::loadTexture("textures/wall.jpg");
@@ -75,7 +79,7 @@ int main(int argc, char** argv) {
 
     lights.pos[16] = Vector4(0, 70, 0, 0);
     lights.col[16] = Vector4(1) * 500;
-    lights.dir[16] = Vector4(0, -1, 0, 0);
+    lights.dir[16] = Vector4(0, -1, 0, 0.8);
 
     for(int i=17; i<32; i++) {
       lights.pos[i] = Vector4(1000000000);
@@ -96,16 +100,16 @@ int main(int argc, char** argv) {
 
     Matrix4 mvp = Matrix4::FromAxisRotations(0, 0, 0);
     Shaders::sh_cone.use(camera.getMatrix());
+    Shaders::sh_cone.setMvp(Matrix4::Identity());
 
-    glBindVertexArray(cone->vao);
+    glBindVertexArray(cone2->vao);
     for(int i=0; i<17; i++) {
       mvp = Matrix4::FromTranslation(lights.pos[i].xyz()) * 
         Matrix4::FromNormal(lights.dir[i].xyz()) * 
-        Matrix4::FromScale(5+glfwGetTime()) *
-        Matrix4::FromScale(0.3, 0.3, 1) * 
-        Matrix4::FromTranslation(0, 0, 1.5);
+        Matrix4::FromScale(250);
       Shaders::sh_cone.setMvp(mvp);
-      glDrawArrays(GL_TRIANGLES, 0, cone->vertex_count);
+      Shaders::sh_cone.setCone(lights.dir[i], lights.col[i]);
+      glDrawArrays(GL_POINTS, 0, cone2->vertex_count);
     }
 
 
@@ -118,8 +122,18 @@ int main(int argc, char** argv) {
     mvp = Matrix4::Identity();
     glBindVertexArray(mesh->vao);
     Shaders::sh_main.setMvp(mvp);
-    glDrawArrays(GL_TRIANGLES, 0, mesh->vertex_count);
+//    glDrawArrays(GL_TRIANGLES, 0, mesh->vertex_count);
 
+    /*
+    glBindVertexArray(cone->vao);
+    for(int i=0; i<17; i++) {
+      mvp = Matrix4::FromTranslation(lights.pos[i].xyz()) * 
+        Matrix4::FromNormal(lights.dir[i].xyz()) * 
+        Matrix4::FromTranslation(0, 0, 1.5);
+      Shaders::sh_cone.setMvp(mvp);
+      glDrawArrays(GL_TRIANGLES, 0, cone->vertex_count);
+    }
+    */
 
 
     glBindVertexArray(cube->vao);
@@ -153,7 +167,9 @@ int main(int argc, char** argv) {
         camera.getPosition(),
         FBO::g_buffer.normalTex,
         FBO::g_buffer.materialTex,
-        FBO::g_buffer.depthTex);
+        FBO::g_buffer.depthTex,
+        FBO::cone_buffer.tex,
+        FBO::cone_buffer.depthTex);
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
     glBindVertexArray(0);
@@ -164,7 +180,7 @@ int main(int argc, char** argv) {
     glViewport(0, 0, w, h);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    Shaders::sh_post.use(FBO::cone_buffer.tex, time);
+    Shaders::sh_post.use(FBO::post_buffer.tex, time);
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
 

@@ -58,6 +58,23 @@ Mesh* loadMesh(const char* filename) {
   glBindVertexArray(0);
   return mesh;
 }
+ 
+Mesh* loadMeshPoints(unsigned int length, const float* points) {
+  Mesh* mesh = new Mesh();
+  mesh->vertex_count = length / 3;
+  glGenVertexArrays(1, &mesh->vao);
+  glBindVertexArray(mesh->vao);
+
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, length * sizeof(float), points, GL_STATIC_DRAW);
+  glEnableVertexAttribArray(D_POS_BUFFER_INDEX);
+  glVertexAttribPointer(D_POS_BUFFER_INDEX, 3, GL_FLOAT, GL_FALSE, 0, (void*)(sizeof(float) * 0));
+
+  glBindVertexArray(0);
+  return mesh;
+}
 
 }
 
