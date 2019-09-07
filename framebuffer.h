@@ -10,8 +10,8 @@ namespace FBO {
       // Add depth buffering
       glGenTextures(1, &depthTex);
       glBindTexture(GL_TEXTURE_2D, depthTex);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT, 0,GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
       glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,GL_TEXTURE_2D, depthTex,0);
 
@@ -53,20 +53,20 @@ namespace FBO {
       glGenTextures(1, &tex);
       glBindTexture(GL_TEXTURE_2D, tex);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
       glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex, 0);
 
       // Add depth buffering
       glGenTextures(1, &depthTex);
       glBindTexture(GL_TEXTURE_2D, depthTex);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT, 0,GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
       glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,GL_TEXTURE_2D, depthTex,0);
 
       GLenum DrawBuffers [1] = {GL_COLOR_ATTACHMENT0};
-      glDrawBuffers(2, DrawBuffers);
+      glDrawBuffers(1, DrawBuffers);
       auto fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
       if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
           std::cout << "Framebuffer not complete: " << fboStatus <<  " /  " << GL_FRAMEBUFFER_UNSUPPORTED << std::endl;
@@ -86,8 +86,8 @@ namespace FBO {
       glGenTextures(1, &tex);
       glBindTexture(GL_TEXTURE_2D, tex);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
       glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex, 0);
 
       GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};

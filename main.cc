@@ -49,11 +49,10 @@ int main(int argc, char** argv) {
   auto mesh = Meshes::loadMesh("player.obj");
   auto cube = Meshes::loadMesh("cube.obj");
   auto floor = Meshes::loadMesh("floor.obj");
-  auto cone = Meshes::loadMesh("cone.obj");
   float cone_data[] = {
     0, 0, 0,
   };
-  auto cone2 = Meshes::loadMeshPoints(3, cone_data);
+  auto cone = Meshes::loadMeshPoints(3, cone_data);
 
   auto tx_white = Textures::createTextureColor(1, 1, 1);
   auto tx_brick = Textures::loadTexture("textures/wall.jpg");
@@ -72,14 +71,14 @@ int main(int argc, char** argv) {
       float x = sin(v + time);
       float z = cos(v + time);
       float r = 50 + 35 * sin(time); 
-      lights.pos[i] = Vector4(r * x, 15 + 10 * cos(4 * v + 4 * time), r * z, 0);
-      lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 580;
-      lights.dir[i] = Vector4((Vector3(0, -10 + 30 * sin(3.4*v + glfwGetTime()), 0)-lights.pos[i].xyz()).normalized(), 0.959 - 0.02 * sin(v+glfwGetTime()));
+      lights.pos[i] = Vector4(r * x, 45 + 20 * cos(4 * v + 4 * time), r * z, 0);
+      lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 180;
+      lights.dir[i] = Vector4((Vector3(0, 20, 0)-lights.pos[i].xyz()).normalized(), 0.959 - 0.02 * sin(v+glfwGetTime()));
     }
 
     lights.pos[16] = Vector4(0, 70, 0, 0);
     lights.col[16] = Vector4(1) * 500;
-    lights.dir[16] = Vector4(0, -1, 0, 0.8);
+    lights.dir[16] = Vector4(0, -1, 0, 0.994);
 
     for(int i=17; i<32; i++) {
       lights.pos[i] = Vector4(1000000000);
@@ -89,28 +88,11 @@ int main(int argc, char** argv) {
 
 
     int w, h;
+    Matrix4 mvp;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glfwGetFramebufferSize(window, &w, &h);
 
     camera.update(w/h, &keyboard);
-
-    FBO::cone_buffer.bind();
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
-    glViewport(0, 0, D_FRAMEBUFFER_WIDTH, D_FRAMEBUFFER_HEIGHT); 
-
-    Matrix4 mvp = Matrix4::FromAxisRotations(0, 0, 0);
-    Shaders::sh_cone.use(camera.getMatrix());
-    Shaders::sh_cone.setMvp(Matrix4::Identity());
-
-    glBindVertexArray(cone2->vao);
-    for(int i=0; i<17; i++) {
-      mvp = Matrix4::FromTranslation(lights.pos[i].xyz()) * 
-        Matrix4::FromNormal(lights.dir[i].xyz()) * 
-        Matrix4::FromScale(250);
-      Shaders::sh_cone.setMvp(mvp);
-      Shaders::sh_cone.setCone(lights.dir[i], lights.col[i]);
-      glDrawArrays(GL_POINTS, 0, cone2->vertex_count);
-    }
 
 
     FBO::g_buffer.bind();
@@ -122,18 +104,7 @@ int main(int argc, char** argv) {
     mvp = Matrix4::Identity();
     glBindVertexArray(mesh->vao);
     Shaders::sh_main.setMvp(mvp);
-//    glDrawArrays(GL_TRIANGLES, 0, mesh->vertex_count);
-
-    /*
-    glBindVertexArray(cone->vao);
-    for(int i=0; i<17; i++) {
-      mvp = Matrix4::FromTranslation(lights.pos[i].xyz()) * 
-        Matrix4::FromNormal(lights.dir[i].xyz()) * 
-        Matrix4::FromTranslation(0, 0, 1.5);
-      Shaders::sh_cone.setMvp(mvp);
-      glDrawArrays(GL_TRIANGLES, 0, cone->vertex_count);
-    }
-    */
+    glDrawArrays(GL_TRIANGLES, 0, mesh->vertex_count);
 
 
     glBindVertexArray(cube->vao);
@@ -142,7 +113,6 @@ int main(int argc, char** argv) {
       Shaders::sh_main.setMvp(cube_mvp);
       glDrawArrays(GL_TRIANGLES, 0, cube->vertex_count);
     }
-
 
     Textures::setTexture(tx_brick);
     Shaders::sh_main.setTextureScale(5);
@@ -167,12 +137,31 @@ int main(int argc, char** argv) {
         camera.getPosition(),
         FBO::g_buffer.normalTex,
         FBO::g_buffer.materialTex,
-        FBO::g_buffer.depthTex,
-        FBO::cone_buffer.tex,
-        FBO::cone_buffer.depthTex);
+        FBO::g_buffer.depthTex);
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
     glBindVertexArray(0);
+
+    // Blend the cones over the over the scenes
+    FBO::cone_buffer.bind();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    mvp = Matrix4::FromAxisRotations(0, 0, 0);
+    Shaders::sh_cone.use(camera.getMatrix(), camera.getPosition(), FBO::g_buffer.depthTex);
+    glEnable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glBlendFunc(GL_ONE, GL_ONE);
+    glBindVertexArray(cone->vao);
+    for(int i=0; i<17; i++) {
+      mvp = Matrix4::FromTranslation(lights.pos[i].xyz()) * 
+        Matrix4::FromNormal(lights.dir[i].xyz()) * 
+        Matrix4::FromScale(300);
+      Shaders::sh_cone.setMvp(mvp);
+      Shaders::sh_cone.setCone(lights.dir[i], lights.col[i]);
+      glDrawArrays(GL_POINTS, 0, cone->vertex_count);
+    }
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+
 
     // <--- Draw result with post shader --->
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -180,12 +169,15 @@ int main(int argc, char** argv) {
     glViewport(0, 0, w, h);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    Shaders::sh_post.use(FBO::post_buffer.tex, time);
+    Shaders::sh_post.use(
+        FBO::post_buffer.tex,
+        FBO::cone_buffer.tex,
+        time);
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
 
     keyboard.swapBuffers();
-    glfwSwapInterval(2);
+    glfwSwapInterval(1);
     glfwSwapBuffers(window);
     glfwPollEvents();
 //    std::this_thread::sleep_for(std::chrono::milliseconds(1000/80));

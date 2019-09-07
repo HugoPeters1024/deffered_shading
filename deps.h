@@ -13,7 +13,7 @@
 #include <thread>
 
 // SHADER LOCATIONS
-// buffers
+// Buffers
 #define D_POS_BUFFER_INDEX       0
 #define D_NORMAL_BUFFER_INDEX    1
 #define D_UV_BUFFER_INDEX        2
