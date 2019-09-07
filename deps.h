@@ -30,6 +30,8 @@
 // Textures
 #define D_TEXTURE_MATERIAL_INDEX        5
 #define D_TEXTURE_NORMALMAP_INDEX       6
+#define D_TEXTURE_MATERIAL2_INDEX       7
+#define D_TEXTURE_MATERIAL3_INDEX       8
 #define D_NORMAL_GTEXTURE_INDEX         15
 #define D_MATERIAL_GTEXTURE_INDEX       16
 #define D_DEPTH_GTEXTURE_INDEX          17

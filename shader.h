@@ -103,6 +103,16 @@ void main() {
 }
 )";
 
+static const char* empty_fs_src = R"(
+#version 450
+
+out vec3 color;
+
+void main() {
+  color = vec3(1, 0, 1);
+}
+)";
+
 static const char* post_fs_src = R"(
 #version 450
 
@@ -274,6 +284,111 @@ void main() {
 }
 )";
 
+static const char* plane_vs_src = R"(
+#version 450
+
+layout(location = 0) in vec3 vPos;
+
+
+void main() {
+  gl_Position = vec4(vPos, 1);
+}
+
+)";
+
+
+static const char* plane_gs_src = R"(
+#version 450
+
+layout(points) in;
+layout(triangle_strip, max_vertices=4) out;
+
+layout(location = 0) uniform mat4 camera;
+layout(location = 1) uniform mat4 mvp;
+
+struct vData {
+  vec3 normal;
+  vec3 pos;
+  float n;
+};
+
+out vData vertex; 
+
+float mod289(float x){return x - floor(x * (1.0 / 289.0)) * 289.0;}
+vec4 mod289(vec4 x){return x - floor(x * (1.0 / 289.0)) * 289.0;}
+vec4 perm(vec4 x){return mod289(((x * 34.0) + 1.0) * x);}
+float noise(vec3 p){
+    vec3 a = floor(p);
+    vec3 d = p - a;
+    d = d * d * (3.0 - 2.0 * d);
+    vec4 b = a.xxyy + vec4(0.0, 1.0, 0.0, 1.0);
+    vec4 k1 = perm(b.xyxy);
+    vec4 k2 = perm(k1.xyxy + b.zzww);
+    vec4 c = k2 + a.zzzz;
+    vec4 k3 = perm(c);
+    vec4 k4 = perm(c + 1.0);
+    vec4 o1 = fract(k3 * (1.0 / 41.0));
+    vec4 o2 = fract(k4 * (1.0 / 41.0));
+    vec4 o3 = o2 * d.z + o1 * (1.0 - d.z);
+    vec2 o4 = o3.yw * d.x + o3.xz * (1.0 - d.x);
+    return o4.y * d.y + o4.x * (1.0 - d.y);
+}
+
+
+void main() {
+  mat4 t =  camera * mvp;
+  vData data[4];
+  vec4 p[4];
+  p[0] = (gl_in[0].gl_Position + vec4(0, 0, 0, 1));
+  p[1] = (gl_in[0].gl_Position + vec4(1, 0, 0, 1));
+  p[2] = (gl_in[0].gl_Position + vec4(0, 0, 1, 1));
+  p[3] = (gl_in[0].gl_Position + vec4(1, 0, 1, 1));
+
+  for(int i=0; i<4; i++) {
+    data[i].n = noise(p[i].xyz / 4.0);
+    data[i].pos = p[i].xyz + vec3(0, data[i].n * 10, 0);
+    data[i].normal = normalize(mvp * vec4(normalize(cross(data[i/2].pos.xyz, data[(i/2+2)%4].pos.xyz)), 0)).xyz;
+    gl_Position = t * vec4(data[i].pos, 1);
+    vertex = data[i];
+    EmitVertex();
+  }
+
+  EndPrimitive();
+}
+)";
+
+static const char* plane_fs_src = R"(
+#version 450
+
+layout(location = 3) uniform float texture_scale;
+
+struct vData {
+  vec3 normal;
+  vec3 pos;
+  float n;
+};
+
+layout(location = 5) uniform sampler2D t_water;
+layout(location = 7) uniform sampler2D t_grass;
+layout(location = 8) uniform sampler2D t_stone;
+
+in vData vertex;
+out vec3 color;
+
+void main() {
+  vec3 water = texture(t_water, vertex.pos.xz * texture_scale).xyz;
+  vec3 grass = texture(t_grass, vertex.pos.xz * texture_scale).xyz;
+  vec3 stone = texture(t_stone, vertex.pos.xz * texture_scale).xyz;
+  float c = -0.0;
+  float a1 = pow(max(cos((vertex.n-c) * 3.14), 0), 4);
+  float a2 = pow(max(cos((vertex.n-c-0.5) * 3.14), 0), 4);
+  float a3 = pow(max(cos((vertex.n-c-1) * 3.14), 0), 4);
+  color = a1 * water + a2 * grass + a3 * stone;
+  color = vertex.normal;
+}
+)";
+
+
 static const char* cone_fs_src = R"(
 #version 450
 
@@ -376,6 +491,39 @@ struct sh_cone_t {
   }
 } sh_cone;
 
+struct sh_plane_t {
+  GLuint program_id;
+  void setCamera(const Matrix4 &camera, const Vector3 &cam_pos) const {
+    mat4x4 m_camera;
+    camera.unpack(m_camera);
+    glUniformMatrix4fv(D_CAMERA_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)m_camera);
+    glUniform3f(D_CAMERAPOS_UNIFORM_INDEX, cam_pos.x, cam_pos.y, cam_pos.z);
+  }
+  void setMvp(const Matrix4 &mvp) const {
+    mat4x4 m_mvp;
+    mvp.unpack(m_mvp);
+    glUniformMatrix4fv(D_MVP_UNIFORM_INDEX, 1, GL_FALSE, (const GLfloat*)m_mvp);
+  }
+  void setTextureScale(float s) const {
+    glUniform1f(D_TEXTURE_SCALE_UNIFORM_INDEX, s);
+  }
+  void use(const Matrix4 &camera,
+      const Vector3 &cam_pos,
+      const Texture &water,
+      const Texture &grass,
+      const Texture &stone) const {
+    glUseProgram(program_id);
+    setCamera(camera, cam_pos);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, water);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, grass);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, stone);
+    glActiveTexture(GL_TEXTURE0);
+  }
+} sh_plane;
+
 struct sh_combinator_t {
   // Combination shader that combines to the g buffers to a quad
   GLuint program_id;
@@ -439,9 +587,19 @@ void init() {
   // CONE SHADER
   logInfo("Compiling cone shader");
   sh_cone.program_id = loadShaderLiteral(empty_vs_src, cone_gs_src, cone_fs_src);
-  glUseProgram(sh_main.program_id);
+  glUseProgram(sh_cone.program_id);
   glUniform1i(D_DEPTH_GTEXTURE_INDEX, 0);
   logInfo("Compiling cone shader completed (id: %i)", sh_cone.program_id);
+
+  // PLANE SHADER
+  logInfo("Compiling plane shader");
+  sh_plane.program_id = loadShaderLiteral(plane_vs_src, plane_gs_src, plane_fs_src);
+  glUseProgram(sh_plane.program_id);
+  glUniform1i(D_TEXTURE_MATERIAL_INDEX,  0);
+  glUniform1i(D_TEXTURE_MATERIAL2_INDEX, 1);
+  glUniform1i(D_TEXTURE_MATERIAL3_INDEX, 2);
+  logInfo("Compiling plane shader completed (id: %i)", sh_plane.program_id);
+
 
   // POST SHADER
   logInfo("Compiling post processing shader");

@@ -54,9 +54,23 @@ int main(int argc, char** argv) {
   };
   auto cone = Meshes::loadMeshPoints(3, cone_data);
 
+  float* plane_data = (float*)malloc(25 * 25 * 3 * sizeof(float));
+  for(int y=0, q=0; y<25; y++) {
+    for(int x=0; x<25; x++) {
+      plane_data[q++] = ((float)x);
+      plane_data[q++] = 0;
+      plane_data[q++] = ((float)y);
+    }
+  }
+  auto plane = Meshes::loadMeshPoints(25*25*3, plane_data);
+  delete plane_data;
+
   auto tx_white = Textures::createTextureColor(1, 1, 1);
   auto tx_brick = Textures::loadTexture("textures/wall.jpg");
   auto tx_brick_norm = Textures::loadTexture("textures/wall_norm.jpg");
+  auto tx_water = Textures::loadTexture("textures/water.jpg");
+  auto tx_grass = Textures::loadTexture("textures/grass.jpg");
+  auto tx_stone = Textures::loadTexture("textures/stone.jpg");
 
   int int_Time = 0;
   float time = 0;
@@ -72,8 +86,8 @@ int main(int argc, char** argv) {
       float z = cos(v + time);
       float r = 50 + 35 * sin(time); 
       lights.pos[i] = Vector4(r * x, 45 + 20 * cos(4 * v + 4 * time), r * z, 0);
-      lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 180;
-      lights.dir[i] = Vector4((Vector3(0, 20, 0)-lights.pos[i].xyz()).normalized(), 0.959 - 0.02 * sin(v+glfwGetTime()));
+      lights.col[i] = Vector4(0.5 * x + 0.5, 0.5*z +0.5, 0.5, 1) * 1800;
+      lights.dir[i] = Vector4((Vector3(0, 20, 0)-lights.pos[i].xyz()).normalized(), 0.999 - 0.001 * sin(v+glfwGetTime()));
     }
 
     lights.pos[16] = Vector4(0, 70, 0, 0);
@@ -117,13 +131,15 @@ int main(int argc, char** argv) {
     Textures::setTexture(tx_brick);
     Shaders::sh_main.setTextureScale(5);
 
+    /*
     Textures::setNormalMap(tx_brick_norm);
     Matrix4 floor_mvp = Matrix4::FromScale(150, 150, 150);
     Shaders::sh_main.setMvp(floor_mvp);
     glBindVertexArray(floor->vao);
     glDrawArrays(GL_TRIANGLES, 0, floor->vertex_count);
-
     Textures::disableNormalMap();
+    */
+
 
 
     // <--- Draw combined to post buffer ---->
@@ -141,6 +157,7 @@ int main(int argc, char** argv) {
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
     glBindVertexArray(0);
+
 
     // Blend the cones over the over the scenes
     FBO::cone_buffer.bind();
@@ -175,6 +192,23 @@ int main(int argc, char** argv) {
         time);
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
+
+    // test
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    Shaders::sh_plane.use(
+        camera.getMatrix(),
+        camera.getPosition(),
+        tx_water,
+        tx_grass,
+        tx_stone);
+    Shaders::sh_plane.setTextureScale(0.05);
+    Shaders::sh_plane.setMvp(
+        Matrix4::FromScale(10) * 
+        Matrix4::FromTranslation(-12.5, -10, -12.5));
+    glBindVertexArray(plane->vao);
+    glDrawArrays(GL_POINTS, 0, plane->vertex_count);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     keyboard.swapBuffers();
     glfwSwapInterval(1);
