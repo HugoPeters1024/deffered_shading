@@ -91,10 +91,14 @@ int main(int argc, char** argv) {
     }
 
     lights.pos[16] = Vector4(0, 70, 0, 0);
-    lights.col[16] = Vector4(1) * 500;
-    lights.dir[16] = Vector4(0, -1, 0, 0.994);
+    lights.col[16] = Vector4(1) * 5000;
+    lights.dir[16] = Vector4(0, -1, 0, 0.294);
 
-    for(int i=17; i<32; i++) {
+    lights.pos[17] = Vector4(20, 20-glfwGetTime()*2, -20, 0);
+    lights.col[17] = Vector4(1) * 4000;
+    lights.dir[16] = Vector4(0, 0, 0, 0);
+
+    for(int i=18; i<32; i++) {
       lights.pos[i] = Vector4(1000000000);
       lights.col[i] = Vector4(0);
       lights.dir[i] = Vector4(0);
@@ -141,6 +145,19 @@ int main(int argc, char** argv) {
     */
 
 
+    // test
+    Shaders::sh_plane.use(
+        camera.getMatrix(),
+        camera.getPosition(),
+        tx_water,
+        tx_grass,
+        tx_stone);
+    Shaders::sh_plane.setTextureScale(0.05);
+    Shaders::sh_plane.setMvp(
+        Matrix4::FromScale(10) * 
+        Matrix4::FromTranslation(-12.5, -10, -12.5));
+    glBindVertexArray(plane->vao);
+    glDrawArrays(GL_POINTS, 0, plane->vertex_count);
 
     // <--- Draw combined to post buffer ---->
     FBO::post_buffer.bind();
@@ -193,22 +210,6 @@ int main(int argc, char** argv) {
     glBindVertexArray(quad->vao);
     glDrawArrays(GL_TRIANGLES, 0, quad->vertex_count);
 
-    // test
-    glClear(GL_DEPTH_BUFFER_BIT);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    Shaders::sh_plane.use(
-        camera.getMatrix(),
-        camera.getPosition(),
-        tx_water,
-        tx_grass,
-        tx_stone);
-    Shaders::sh_plane.setTextureScale(0.05);
-    Shaders::sh_plane.setMvp(
-        Matrix4::FromScale(10) * 
-        Matrix4::FromTranslation(-12.5, -10, -12.5));
-    glBindVertexArray(plane->vao);
-    glDrawArrays(GL_POINTS, 0, plane->vertex_count);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     keyboard.swapBuffers();
     glfwSwapInterval(1);

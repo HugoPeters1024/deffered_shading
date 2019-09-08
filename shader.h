@@ -301,7 +301,7 @@ static const char* plane_gs_src = R"(
 #version 450
 
 layout(points) in;
-layout(triangle_strip, max_vertices=4) out;
+layout(triangle_strip, max_vertices=6) out;
 
 layout(location = 0) uniform mat4 camera;
 layout(location = 1) uniform mat4 mvp;
@@ -309,7 +309,7 @@ layout(location = 1) uniform mat4 mvp;
 struct vData {
   vec3 normal;
   vec3 pos;
-  float n;
+  float h;
 };
 
 out vData vertex; 
@@ -337,21 +337,61 @@ float noise(vec3 p){
 
 void main() {
   mat4 t =  camera * mvp;
-  vData data[4];
-  vec4 p[4];
-  p[0] = (gl_in[0].gl_Position + vec4(0, 0, 0, 1));
-  p[1] = (gl_in[0].gl_Position + vec4(1, 0, 0, 1));
-  p[2] = (gl_in[0].gl_Position + vec4(0, 0, 1, 1));
-  p[3] = (gl_in[0].gl_Position + vec4(1, 0, 1, 1));
+  vec3 pos[4];
+  pos[0] = gl_in[0].gl_Position.xyz + vec3(0, 0, 0);
+  pos[1] = gl_in[0].gl_Position.xyz + vec3(1, 0, 0);
+  pos[2] = gl_in[0].gl_Position.xyz + vec3(0, 0, 1);
+  pos[3] = gl_in[0].gl_Position.xyz + vec3(1, 0, 1);
+  float h[4];
+  h[0] = noise(pos[0] / 4.0);
+  h[1] = noise(pos[1] / 4.0);
+  h[2] = noise(pos[2] / 4.0);
+  h[3] = noise(pos[3] / 4.0);
+  pos[0] = pos[0] + vec3(0, h[0] * 10, 0);
+  pos[1] = pos[1] + vec3(0, h[1] * 10, 0);
+  pos[2] = pos[2] + vec3(0, h[2] * 10, 0);
+  pos[3] = pos[3] + vec3(0, h[3] * 10, 0);
+  vec3 normal[2];
+  normal[0] = -normalize((mvp * vec4(cross(normalize(pos[0] - pos[1]), normalize(pos[1] - pos[2])), 0))).xyz;
+  normal[1] = normalize((mvp * vec4(cross(normalize(pos[1] - pos[2]), normalize(pos[2] - pos[3])), 0))).xyz;
 
-  for(int i=0; i<4; i++) {
-    data[i].n = noise(p[i].xyz / 4.0);
-    data[i].pos = p[i].xyz + vec3(0, data[i].n * 10, 0);
-    data[i].normal = normalize(mvp * vec4(normalize(cross(data[i/2].pos.xyz, data[(i/2+2)%4].pos.xyz)), 0)).xyz;
-    gl_Position = t * vec4(data[i].pos, 1);
-    vertex = data[i];
-    EmitVertex();
-  }
+  vertex.pos = pos[0]; 
+  vertex.h = h[0];
+  vertex.normal = normal[0];
+  gl_Position = t * vec4(pos[0], 1);
+  EmitVertex();
+
+  vertex.pos = pos[1]; 
+  vertex.h = h[1];
+  vertex.normal = normal[0];
+  gl_Position = t * vec4(pos[1], 1);
+  EmitVertex();
+
+  vertex.pos = pos[2]; 
+  vertex.h = h[2];
+  vertex.normal = normal[0];
+  gl_Position = t * vec4(pos[2], 1);
+  EmitVertex();
+
+  EndPrimitive();
+
+  vertex.pos = pos[1]; 
+  vertex.h = h[1];
+  vertex.normal = normal[1];
+  gl_Position = t * vec4(pos[1], 1);
+  EmitVertex();
+
+  vertex.pos = pos[2]; 
+  vertex.h = h[2];
+  vertex.normal = normal[1];
+  gl_Position = t * vec4(pos[2], 1);
+  EmitVertex();
+
+  vertex.pos = pos[3]; 
+  vertex.h = h[3];
+  vertex.normal = normal[1];
+  gl_Position = t * vec4(pos[3], 1);
+  EmitVertex();
 
   EndPrimitive();
 }
@@ -365,7 +405,7 @@ layout(location = 3) uniform float texture_scale;
 struct vData {
   vec3 normal;
   vec3 pos;
-  float n;
+  float h;
 };
 
 layout(location = 5) uniform sampler2D t_water;
@@ -373,18 +413,19 @@ layout(location = 7) uniform sampler2D t_grass;
 layout(location = 8) uniform sampler2D t_stone;
 
 in vData vertex;
-out vec3 color;
+out vec3 c_normal;
+out vec3 c_material;
 
 void main() {
   vec3 water = texture(t_water, vertex.pos.xz * texture_scale).xyz;
   vec3 grass = texture(t_grass, vertex.pos.xz * texture_scale).xyz;
   vec3 stone = texture(t_stone, vertex.pos.xz * texture_scale).xyz;
   float c = -0.0;
-  float a1 = pow(max(cos((vertex.n-c) * 3.14), 0), 4);
-  float a2 = pow(max(cos((vertex.n-c-0.5) * 3.14), 0), 4);
-  float a3 = pow(max(cos((vertex.n-c-1) * 3.14), 0), 4);
-  color = a1 * water + a2 * grass + a3 * stone;
-  color = vertex.normal;
+  float a1 = pow(max(cos((vertex.h-c) * 3.14), 0), 4) + 0.1;
+  float a2 = pow(max(cos((vertex.h-c-0.5) * 3.14), 0), 4) + 0.1;
+  float a3 = pow(max(cos((vertex.h-c-1) * 3.14), 0), 4) + 0.1;
+  c_material = a1 * water + a2 * grass + a3 * stone;
+  c_normal   = vertex.normal;
 }
 )";
 
